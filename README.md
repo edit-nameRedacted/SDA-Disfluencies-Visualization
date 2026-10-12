@@ -4,6 +4,8 @@ An interactive D3 visualization of how people actually talk on the phone. It is 
 650 calls from the Switchboard corpus (telephone conversations between strangers, recorded in
 1991 and 1992). The idea behind it: in real talk, the complete, fluent sentence is the exception.
 
+A live demo version of the site is available <a href="https://switchboard-disfluency-viz.web.app/">here.</a>
+
 You move through six screens, each one closer in:
 
 1. **Opening.** A telephone receiver rings. Click it to answer.
