@@ -1,0 +1,63 @@
+{
+  "conversations": 1155,
+  "conversations_with_parse": 650,
+  "turns": 125877,
+  "utterances": 204915,
+  "words": 1474390,
+  "word_class_pct": {
+    "p": 84.217,
+    "cj": 3.643,
+    "dm": 1.067,
+    "ij": 0.559,
+    "as": 0.15,
+    "fp": 2.67,
+    "et": 0.508,
+    "rp": 4.8,
+    "fr": 0.152,
+    "yk": 2.231
+  },
+  "disfluent_words_pct": 10.363,
+  "filled_pauses": 39371,
+  "uh": 32312,
+  "um": 7026,
+  "repairs": 49061,
+  "utterances_with_disfluency_pct": 30.903,
+  "utterances_with_filled_pause_pct": 14.997,
+  "utterances_abandoned_pct": 11.899,
+  "markup_type_pct_of_utterances": {
+    "fluent": 41.586,
+    "disfluent": 25.285,
+    "abandoned": 11.886,
+    "backchannel": 19.444,
+    "nonverbal": 1.798
+  },
+  "sentence_units": 100988,
+  "sentence_type_pct_of_units": {
+    "complete_fluent": 37.484,
+    "complete_disfluent": 22.947,
+    "unfinished": 11.185,
+    "response_token": 22.385,
+    "fragment": 5.999
+  },
+  "sentence_type_pct_of_words": {
+    "complete_fluent": 39.371,
+    "complete_disfluent": 44.24,
+    "unfinished": 9.184,
+    "response_token": 3.093,
+    "fragment": 4.112
+  },
+  "utterance_level_sentence_type_pct_of_utterances": {
+    "complete_fluent": 31.092,
+    "complete_disfluent": 24.548,
+    "unfinished": 9.859,
+    "response_token": 28.508,
+    "fragment": 5.993
+  },
+  "utterance_level_sentence_type_pct_of_words": {
+    "complete_fluent": 32.613,
+    "complete_disfluent": 50.006,
+    "unfinished": 9.442,
+    "response_token": 4.283,
+    "fragment": 3.657
+  }
+}

@@ -1,0 +1,486 @@
+<title>Conversations by Topic</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column, two figures. Figure 1 is a row of umbrella bars on one
+   axis. Figure 2 is a wrapping grid of small topic tiles, one block per umbrella. */
+:root {
+  --plane: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --hair: #e1e0d9;
+  --rule: #c3c2b7;
+  /* sentence types: blue = complete clause (strong = fluent, quiet = with a disfluency),
+     orange = clause left unfinished, green = no clause, grey = response token */
+  --t-fluent: #184f95;
+  --t-disfl: #6da7ec;
+  --t-unfin: #eb6834;
+  --t-frag: #1baf7a;
+  --t-resp: #c3c2b7;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --hair: #2c2c2a; --rule: #383835;
+    --t-fluent: #5598e7; --t-disfl: #256abf; --t-unfin: #d95926; --t-frag: #199e70; --t-resp: #52514e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+  --hair: #2c2c2a; --rule: #383835;
+  --t-fluent: #5598e7; --t-disfl: #256abf; --t-unfin: #d95926; --t-frag: #199e70; --t-resp: #52514e;
+  color-scheme: dark;
+}
+
+body { background: var(--plane); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.page { max-width: 62rem; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 40px 64px; display: flex; flex-direction: column; gap: 28px; }
+
+.intro { display: flex; flex-direction: column; gap: 10px; max-width: 42rem; }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+h1 { margin: 0; font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem); line-height: 1.15; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--ink-2); font-size: 16px; }
+
+.figure { background: var(--surface); border: 1px solid var(--hair); border-radius: 6px; padding: clamp(16px, 3vw, 28px); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.fig-head { display: flex; flex-direction: column; gap: 4px; max-width: 44rem; }
+h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
+.sub { margin: 0; color: var(--ink-2); font-size: 14px; }
+
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--ink-2); }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.sw { flex: none; width: 10px; height: 14px; border-radius: 1px; }
+.t0 { background: var(--t-fluent); fill: var(--t-fluent); }
+.t1 { background: var(--t-disfl); fill: var(--t-disfl); }
+.t2 { background: var(--t-unfin); fill: var(--t-unfin); }
+.t3 { background: var(--t-frag); fill: var(--t-frag); }
+.t4 { background: var(--t-resp); fill: var(--t-resp); }
+
+/* Figure 1: umbrella bars */
+.ov-scroll { overflow-x: auto; }
+.ov-inner { min-width: 720px; padding-left: 46px; }
+#ov { display: block; width: 100%; overflow: visible; }
+#ov .grid { stroke: var(--hair); stroke-width: 1; }
+#ov .base { stroke: var(--rule); stroke-width: 1; }
+#ov text { font-family: var(--sans); font-size: 12px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+#ov text.cap { fill: var(--ink); font-weight: 500; }
+#ov .slot { fill: transparent; cursor: pointer; }
+.ov-labels { display: grid; margin-top: 8px; }
+.ov-labels button { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 4px; text-align: center; font-size: 12px; line-height: 1.3; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ov-labels button:hover .u-name { text-decoration: underline; }
+.ov-labels button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: 3px; }
+.u-name { font-weight: 500; overflow-wrap: anywhere; }
+.u-n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cursor { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+
+/* Figure 2: one block per umbrella, a wrapping row of topic tiles */
+.scale-key { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.scale-key svg { flex: none; overflow: visible; }
+.scale-key line { stroke: var(--ink-2); stroke-width: 1.5; }
+.sections { display: flex; flex-direction: column; gap: 30px; }
+.umb { display: flex; flex-direction: column; gap: 14px; padding-top: 18px; border-top: 1px solid var(--hair); scroll-margin-top: 12px; }
+.umb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.umb-meta { margin: 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tiles { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: flex-start; }
+.tile { margin: 0; display: flex; flex-direction: column; gap: 6px; width: max(var(--w), 5.25rem); }
+.tile svg { display: block; touch-action: pan-y; cursor: crosshair; overflow: visible; border-radius: 2px; }
+.tile svg:focus { outline: none; }
+.tile svg:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.tile .grid { stroke: var(--hair); stroke-width: 1; }
+.tile .base { stroke: var(--rule); stroke-width: 1; }
+.tile figcaption { display: flex; flex-direction: column; font-size: 12px; line-height: 1.3; }
+.t-name { font-weight: 500; }
+.t-n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tile.avg { padding-right: 22px; border-right: 1px solid var(--hair); box-sizing: content-box; }
+
+.tip { position: fixed; z-index: 10; left: 0; top: 0; width: max-content; max-width: min(22rem, calc(100vw - 24px)); background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 5px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
+.tip-title { font-size: 13px; font-weight: 600; }
+.tip-meta { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tip-rows { display: grid; grid-template-columns: auto 1fr auto auto; gap: 3px 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tip-rows .key { width: 12px; height: 3px; border-radius: 1px; }
+.tip-rows .lab { color: var(--ink-2); }
+.tip-rows .pct { font-weight: 600; text-align: right; }
+.tip-rows .wds { color: var(--ink-2); text-align: right; }
+
+.numbers summary { cursor: pointer; font-size: 13px; color: var(--ink-2); width: fit-content; }
+.numbers summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.table-scroll { overflow-x: auto; margin-top: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 44rem; font-size: 13px; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: var(--ink-2); font-size: 12px; padding-bottom: 8px; }
+th, td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--hair); }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+thead th { font-weight: 500; color: var(--ink-2); vertical-align: bottom; }
+thead th .sw { display: inline-block; height: 12px; margin-right: 6px; vertical-align: -1px; }
+tbody th { font-weight: 400; padding-left: 16px; }
+tbody tr.umb-row th, tbody tr.umb-row td { font-weight: 600; padding-top: 12px; }
+tbody tr.umb-row th { padding-left: 0; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 20px 40px; max-width: 54rem; }
+.notes h2 { margin: 0 0 6px; font-size: 14px; }
+.notes p { margin: 0; color: var(--ink-2); font-size: 14px; }
+.notes div { min-width: 0; }
+</style>
+
+<main class="page">
+  <header class="intro">
+    <p class="eyebrow">Switchboard corpus · proof of concept</p>
+    <h1>Ten topic umbrellas, 650 phone calls</h1>
+    <p class="lede">Every bar is a stack of words. Its height is the length of a call, and its colors split those words by the kind of utterance they sit in. The first chart averages the calls under each umbrella. The second shows every call, grouped by topic.</p>
+  </header>
+
+  <section class="figure" aria-labelledby="h-umbrellas">
+    <div class="fig-head">
+      <h2 id="h-umbrellas">The average call under each umbrella</h2>
+      <p class="sub">Height is the average number of words per call. The percentage beside each bar is the share of those words spoken in fluent complete sentences, and the umbrellas run from the highest share to the lowest. Select an umbrella to jump to its calls.</p>
+    </div>
+    <ul class="legend"></ul>
+    <div class="ov-scroll">
+      <div class="ov-inner">
+        <svg id="ov" role="img" aria-label="Stacked bars of average words per call for each topic umbrella"></svg>
+        <div class="ov-labels" id="ov-labels"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="figure" aria-labelledby="h-calls">
+    <div class="fig-head">
+      <h2 id="h-calls">Every call, grouped by topic</h2>
+      <p class="sub">One thin bar per call, all on the same scale. Topics run alphabetically inside each umbrella, with the longest call first in each topic. The wider bar at the start of each row repeats the umbrella's average.</p>
+    </div>
+    <ul class="legend"></ul>
+    <div class="scale-key" id="scale-key"></div>
+    <div class="sections" id="sections"></div>
+  </section>
+
+  <details class="numbers">
+    <summary>Show the numbers by umbrella and topic</summary>
+    <div class="table-scroll"><table id="numbers"></table></div>
+  </details>
+
+  <section class="notes">
+    <div>
+      <h2>How the umbrellas were made</h2>
+      <p>Each call was recorded under one assigned topic. The 64 topics that appear here are grouped into ten umbrellas by subject. The grouping is an editorial choice, not part of the corpus, and it lives in one table at the top of the build script.</p>
+    </div>
+    <div>
+      <h2>How the shares are counted</h2>
+      <p>Each word takes the color of the utterance it belongs to. Shares for an umbrella or a topic pool all of its words, so longer calls weigh more than shorter ones.</p>
+    </div>
+    <div>
+      <h2>What is included</h2>
+      <p>The 650 conversations that have a syntactic parse, out of 1,155. Two topics have no parsed calls and do not appear. The topic is the prompt the callers were given, not a coding of what they said.</p>
+    </div>
+  </section>
+</main>
+
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script id="topic-data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+
+  var TYPES = [
+    { label: "Complete sentence, fluent", short: "Complete, fluent" },
+    { label: "Complete sentence, with a disfluency", short: "Complete, disfluent" },
+    { label: "Unfinished clause", short: "Unfinished" },
+    { label: "Fragment (no clause)", short: "Fragment" },
+    { label: "Response token (yeah, uh-huh)", short: "Response token" }
+  ];
+  var calls = JSON.parse(document.getElementById("topic-data").textContent).conversations;
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fmt = d3.format(","), fmt0 = d3.format(",.0f"), pct = d3.format(".0%");
+
+  // ---- 1. Roll the calls up: call -> topic -> umbrella ----
+  calls.forEach(function (c) { c.total = d3.sum(c.w); });
+  function summarize(name, items) {
+    var w = TYPES.map(function (_, t) { return d3.sum(items, function (c) { return c.w[t]; }); });
+    var total = d3.sum(w), n = items.length;
+    return {
+      name: name, n: n, total: total,
+      mean: total / n,                                           // average words per call
+      w: w.map(function (v) { return v / n; }),                  // average words per call, by type
+      share: w.map(function (v) { return v / total; })           // pooled share of words, by type
+    };
+  }
+  var umbrellas = d3.groups(calls, function (c) { return c.umbrella; }).map(function (entry) {
+    var u = summarize(entry[0], entry[1]);
+    u.topics = d3.groups(entry[1], function (c) { return c.topic; }).map(function (t) {
+      var s = summarize(t[0], t[1]);
+      s.calls = t[1].slice().sort(function (a, b) { return d3.descending(a.total, b.total); });
+      return s;
+    }).sort(function (a, b) { return d3.ascending(a.name.toLowerCase(), b.name.toLowerCase()); });
+    return u;
+  }).sort(function (a, b) { return d3.descending(a.share[0], b.share[0]); });
+  umbrellas.forEach(function (u, i) { u.id = "umbrella-" + i; });
+
+  // ---- 2. Legends ----
+  d3.selectAll(".legend").each(function () {
+    d3.select(this).selectAll("li").data(TYPES).join("li").each(function (d, t) {
+      var li = d3.select(this);
+      li.append("span").attr("class", "sw t" + t);
+      li.append("span").text(d.label);
+    });
+  });
+
+  // ---- 3. Stacking: turn five word counts into five rectangles, bottom to top ----
+  // y is a scale from words to pixels. A small surface gap separates the segments.
+  function segments(w, y, gap) {
+    var acc = 0, out = [];
+    w.forEach(function (v, t) {
+      if (v <= 0) return;
+      var y0 = y(acc), y1 = y(acc + v), h = y0 - y1;
+      var g = h >= gap + 2 ? gap : 0;
+      out.push({ t: t, y: y1 + g, h: Math.max(0.5, h - g), g: g });
+      acc += v;
+    });
+    if (out.length) { var top = out[out.length - 1]; top.y -= top.g; top.h += top.g; }
+    return out;
+  }
+
+  // ---- 4. Tooltip shared by both figures ----
+  var tip = document.getElementById("tip");
+  var activeCursor = null;
+  var lastPointer = "mouse";
+  function showTip(anchor, title, meta, item, cursor) {
+    hideTip();
+    if (cursor) { activeCursor = cursor.attr("visibility", "visible"); }
+    tip.textContent = "";
+    var head = tip.appendChild(document.createElement("div"));
+    head.className = "tip-title";
+    head.textContent = title;
+    var m = tip.appendChild(document.createElement("div"));
+    m.className = "tip-meta";
+    m.textContent = meta;
+    var rows = tip.appendChild(document.createElement("div"));
+    rows.className = "tip-rows";
+    var total = d3.sum(item.w);
+    TYPES.forEach(function (d, t) {
+      rows.appendChild(document.createElement("span")).className = "key t" + t;
+      var lab = rows.appendChild(document.createElement("span")); lab.className = "lab"; lab.textContent = d.short;
+      var p = rows.appendChild(document.createElement("span")); p.className = "pct"; p.textContent = pct(item.w[t] / total);
+      var w = rows.appendChild(document.createElement("span")); w.className = "wds"; w.textContent = fmt0(item.w[t]) + " words";
+    });
+    tip.hidden = false;
+    var tw = tip.offsetWidth, th = tip.offsetHeight, vw = document.documentElement.clientWidth;
+    var left = Math.max(12, Math.min(vw - tw - 12, anchor.x - tw / 2));
+    var top = anchor.top - th - 10;
+    if (top < 8) top = anchor.bottom + 10;
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+  function hideTip() {
+    if (activeCursor) activeCursor.attr("visibility", "hidden");
+    activeCursor = null;
+    tip.hidden = true;
+  }
+  document.addEventListener("pointerdown", function (event) {      // capture phase: runs before the bar handlers
+    lastPointer = event.pointerType || "mouse";
+    if (!event.target.closest || !event.target.closest("svg, .ov-labels")) hideTip();
+  }, true);
+  window.addEventListener("scroll", hideTip, { passive: true });
+
+  // ---- 5. Figure 1: one stacked bar per umbrella, height = average words per call ----
+  var OV = { h: 240, top: 22, bar: 24 };
+  var ovMax = Math.ceil(d3.max(umbrellas, function (u) { return u.mean; }) / 500) * 500;
+  var ovSvg = d3.select("#ov").attr("height", OV.h + OV.top + 1);
+  var labelBox = d3.select("#ov-labels").style("grid-template-columns", "repeat(" + umbrellas.length + ", minmax(0, 1fr))");
+  var buttons = labelBox.selectAll("button").data(umbrellas).join("button").attr("type", "button")
+    .attr("aria-label", function (u) {
+      return u.name + ": " + u.n + " calls, " + fmt0(u.mean) + " words on average, " + pct(u.share[0]) + " in fluent complete sentences. Jump to its calls.";
+    });
+  buttons.append("span").attr("class", "u-name").text(function (u) { return u.name; });
+  buttons.append("span").attr("class", "u-n").text(function (u) { return u.n + " calls"; });
+
+  function umbrellaMeta(u) { return u.n + " calls · " + fmt0(u.mean) + " words on average"; }
+  function jumpTo(u) {
+    hideTip();
+    document.getElementById(u.id).scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  function drawOverview() {
+    var width = Math.floor(document.getElementById("ov").getBoundingClientRect().width);
+    var x = d3.scaleBand().domain(umbrellas.map(function (u) { return u.name; })).range([0, width]);
+    var y = d3.scaleLinear().domain([0, ovMax]).range([OV.top + OV.h, OV.top]);
+    ovSvg.attr("viewBox", "0 0 " + width + " " + (OV.h + OV.top + 1));
+    ovSvg.selectAll("*").remove();
+
+    var ticks = d3.range(0, ovMax + 1, 500);
+    var grid = ovSvg.append("g");
+    grid.selectAll("line").data(ticks).join("line")
+      .attr("class", function (d) { return d === 0 ? "base" : "grid"; })
+      .attr("x1", 0).attr("x2", width)
+      .attr("y1", function (d) { return y(d) + 0.5; }).attr("y2", function (d) { return y(d) + 0.5; });
+    grid.selectAll("text").data(ticks).join("text")
+      .attr("x", -8).attr("y", function (d) { return y(d) + 4; }).attr("text-anchor", "end")
+      .text(function (d) { return fmt(d); });
+
+    var bars = ovSvg.append("g").selectAll("g").data(umbrellas).join("g")
+      .attr("transform", function (u) { return "translate(" + (x(u.name) + x.bandwidth() / 2 - OV.bar / 2) + ",0)"; });
+    bars.each(function (u, i) {                                   // rounded data end, square at the baseline
+      var yt = y(u.mean), yb = y(0), r = 4, w = OV.bar;
+      d3.select(this).append("clipPath").attr("id", "ov-clip-" + i).append("path")
+        .attr("d", "M0," + yb + "V" + (yt + r) + "Q0," + yt + " " + r + "," + yt + "H" + (w - r) + "Q" + w + "," + yt + " " + w + "," + (yt + r) + "V" + yb + "Z");
+    });
+    bars.append("g").attr("clip-path", function (u, i) { return "url(#ov-clip-" + i + ")"; })
+      .selectAll("rect").data(function (u) { return segments(u.w, y, 2); }).join("rect")
+      .attr("class", function (s) { return "t" + s.t; })
+      .attr("x", 0).attr("width", OV.bar)
+      .attr("y", function (s) { return s.y; }).attr("height", function (s) { return s.h; });
+    bars.append("text").attr("class", "cap").attr("x", OV.bar / 2).attr("text-anchor", "middle")
+      .attr("y", function (u) { return y(u.mean) - 7; }).text(function (u) { return fmt0(u.mean); });
+    bars.append("text").attr("x", OV.bar + 5)
+      .attr("y", function (u) { return y(u.w[0] / 2) + 4; }).text(function (u) { return pct(u.share[0]); });
+    var cursors = bars.append("rect").attr("class", "cursor").attr("visibility", "hidden").attr("rx", 5)
+      .attr("x", -2.5).attr("width", OV.bar + 5)
+      .attr("y", function (u) { return y(u.mean) - 2.5; })
+      .attr("height", function (u) { return y(0) - y(u.mean) + 3.5; });
+
+    function tipFor(u, i) {
+      var box = document.getElementById("ov").getBoundingClientRect();
+      var k = box.width / width;
+      showTip({ x: box.left + (x(u.name) + x.bandwidth() / 2) * k, top: box.top + y(u.mean) * k - 14, bottom: box.bottom },
+        u.name, umbrellaMeta(u), u, d3.select(cursors.nodes()[i]));
+    }
+    ovSvg.append("g").selectAll("rect").data(umbrellas).join("rect").attr("class", "slot")
+      .attr("x", function (u) { return x(u.name); }).attr("width", x.bandwidth())
+      .attr("y", 0).attr("height", OV.h + OV.top)
+      .on("pointermove pointerdown", function (event, u) { tipFor(u, umbrellas.indexOf(u)); })
+      .on("pointerleave", function (event) { if (event.pointerType === "mouse") hideTip(); })
+      .on("click", function (event, u) { if (lastPointer !== "touch") jumpTo(u); });   // on touch, a tap reads the bar
+    buttons.on("focus", function (event, u) { if (this.matches(":focus-visible")) tipFor(u, umbrellas.indexOf(u)); })
+      .on("blur", hideTip)
+      .on("click", function (event, u) { jumpTo(u); });
+  }
+
+  // ---- 6. Figure 2: for each umbrella, a tile per topic with one thin bar per call ----
+  // Every tile uses the same pixels-per-word, so heights compare across the whole figure.
+  // Each umbrella's tiles are only as tall as its longest call, which saves empty space.
+  var T = { top: 6, bar: 6, gap: 2, avgBar: 14, pxPerWord: 140 / 2750, mark: 1000 };
+  function tileScale(maxWords) {
+    var h = Math.ceil(maxWords * T.pxPerWord);
+    var y = d3.scaleLinear().domain([0, maxWords]).range([T.top + h, T.top]);
+    y.h = h;
+    return y;
+  }
+
+  var key = d3.select("#scale-key");
+  var keyH = T.mark * T.pxPerWord;
+  var keySvg = key.append("svg").attr("width", 9).attr("height", keyH).attr("aria-hidden", "true");
+  keySvg.append("line").attr("x1", 4.5).attr("x2", 4.5).attr("y1", 0.75).attr("y2", keyH - 0.75);
+  keySvg.append("line").attr("x1", 0).attr("x2", 9).attr("y1", 0.75).attr("y2", 0.75);
+  keySvg.append("line").attr("x1", 0).attr("x2", 9).attr("y1", keyH - 0.75).attr("y2", keyH - 0.75);
+  key.append("span").text("This height is " + fmt(T.mark) + " words. The faint line in each tile marks the same level.");
+
+  var sections = d3.select("#sections").selectAll("section").data(umbrellas).join("section")
+    .attr("class", "umb").attr("id", function (u) { return u.id; });
+  var heads = sections.append("header").attr("class", "umb-head");
+  heads.append("h3").text(function (u) { return u.name; });
+  heads.append("p").attr("class", "umb-meta").text(function (u) {
+    return u.n + " calls · " + u.topics.length + " topics · " + fmt0(u.mean) + " words on average";
+  });
+  var tileRows = sections.append("div").attr("class", "tiles");
+
+  // items: what each bar shows. describe(item) -> [title, meta] for the tooltip.
+  function tile(parent, yT, cls, name, countLabel, items, barW, describe) {
+    var width = items.length * (barW + T.gap) - T.gap;
+    var fig = parent.append("figure").attr("class", "tile " + cls).style("--w", width + "px");
+    var svg = fig.append("svg").attr("width", width).attr("height", yT.h + T.top + 2)
+      .attr("viewBox", "0 0 " + width + " " + (yT.h + T.top + 2))
+      .attr("tabindex", 0).attr("role", "img")
+      .attr("aria-label", name + ", " + countLabel + ". Use arrow keys to read each bar.");
+    svg.append("g").selectAll("line").data(yT.domain()[1] >= T.mark ? [T.mark] : []).join("line").attr("class", "grid")
+      .attr("x1", 0).attr("x2", width)
+      .attr("y1", function (d) { return yT(d) + 0.5; }).attr("y2", function (d) { return yT(d) + 0.5; });
+    svg.append("line").attr("class", "base").attr("x1", 0).attr("x2", width).attr("y1", yT(0) + 0.5).attr("y2", yT(0) + 0.5);
+    svg.append("g").selectAll("g").data(items).join("g")                       // the data join: one group per call
+      .attr("transform", function (d, i) { return "translate(" + i * (barW + T.gap) + ",0)"; })
+      .selectAll("rect").data(function (d) { return segments(d.w, yT, 1); }).join("rect")   // five rects per call
+      .attr("class", function (s) { return "t" + s.t; })
+      .attr("x", 0).attr("width", barW)
+      .attr("y", function (s) { return s.y; }).attr("height", function (s) { return s.h; });
+    var cursor = svg.append("rect").attr("class", "cursor").attr("visibility", "hidden").attr("rx", 2);
+    var cap = fig.append("figcaption");
+    cap.append("span").attr("class", "t-name").text(name);
+    cap.append("span").attr("class", "t-n").text(countLabel);
+
+    var current = 0;
+    function show(i) {
+      current = i;
+      var d = items[i], total = d3.sum(d.w), node = svg.node(), box = node.getBoundingClientRect();
+      cursor.attr("x", i * (barW + T.gap) - 1.5).attr("width", barW + 3)
+        .attr("y", yT(total) - 1.5).attr("height", yT(0) - yT(total) + 3);
+      var info = describe(d);
+      showTip({ x: box.left + i * (barW + T.gap) + barW / 2, top: box.top + yT(total), bottom: box.bottom }, info[0], info[1], d, cursor);
+    }
+    svg.on("pointermove pointerdown", function (event) {
+        var px = event.clientX - this.getBoundingClientRect().left;
+        show(Math.max(0, Math.min(items.length - 1, Math.floor(px / (barW + T.gap)))));
+      })
+      .on("pointerleave", function (event) { if (event.pointerType === "mouse") hideTip(); })
+      .on("focus", function () { if (this.matches(":focus-visible")) show(current); })
+      .on("blur", hideTip)
+      .on("keydown", function (event) {
+        var i = current;
+        if (event.key === "ArrowRight") i = Math.min(items.length - 1, i + 1);
+        else if (event.key === "ArrowLeft") i = Math.max(0, i - 1);
+        else if (event.key === "Home") i = 0;
+        else if (event.key === "End") i = items.length - 1;
+        else if (event.key === "Escape") { hideTip(); return; }
+        else return;
+        event.preventDefault();
+        show(i);
+      });
+  }
+
+  tileRows.each(function (u) {
+    var row = d3.select(this);
+    var yT = tileScale(d3.max(u.topics, function (t) { return t.calls[0].total; }));
+    tile(row, yT, "avg", "Average call", fmt0(u.mean) + " words", [u], T.avgBar, function () {
+      return [u.name, umbrellaMeta(u)];
+    });
+    u.topics.forEach(function (topic) {
+      tile(row, yT, "", topic.name, topic.n + (topic.n === 1 ? " call" : " calls"), topic.calls, T.bar, function (c) {
+        return [topic.name, "Call " + c.id + " · " + c.year + " · " + fmt(c.total) + " words"];
+      });
+    });
+  });
+
+  // ---- 7. Table twin: umbrellas with their topics ----
+  (function () {
+    var table = d3.select("#numbers");
+    table.append("caption").text("Calls, average words per call, and the pooled share of words by sentence type.");
+    var head = table.append("thead").append("tr");
+    head.append("th").attr("scope", "col").text("Umbrella and topic");
+    head.append("th").attr("scope", "col").text("Calls");
+    head.append("th").attr("scope", "col").text("Avg words");
+    TYPES.forEach(function (d, t) {
+      var th = head.append("th").attr("scope", "col");
+      th.append("span").attr("class", "sw t" + t);
+      th.append("span").text(d.short);
+    });
+    function fill(tr, s) {
+      tr.append("th").attr("scope", "row").text(s.name);
+      tr.append("td").text(s.n);
+      tr.append("td").text(fmt0(s.mean));
+      s.share.forEach(function (v) { tr.append("td").text(pct(v)); });
+    }
+    umbrellas.forEach(function (u) {
+      var body = table.append("tbody");
+      fill(body.append("tr").attr("class", "umb-row"), u);
+      u.topics.forEach(function (topic) { fill(body.append("tr"), topic); });
+    });
+  })();
+
+  // ---- 8. First draw, and redraw figure 1 when its width changes ----
+  drawOverview();
+  var lastWidth = document.getElementById("ov").getBoundingClientRect().width;
+  new ResizeObserver(function () {
+    var w = document.getElementById("ov").getBoundingClientRect().width;
+    if (Math.abs(w - lastWidth) > 0.5) { lastWidth = w; drawOverview(); }
+  }).observe(document.getElementById("ov"));
+})();
+</script>

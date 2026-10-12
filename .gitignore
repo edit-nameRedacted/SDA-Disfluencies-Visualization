@@ -1,0 +1,18 @@
+# A second, untracked copy of the working site, for trying things out without touching site/
+website-copy/
+
+# The corpus download and the full extraction output: large, and rebuilt by the pipeline
+pipeline/corpus/*
+!pipeline/corpus/.gitkeep
+pipeline/output/*
+!pipeline/output/.gitkeep
+
+# Python and editor clutter
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+node_modules/
+~$*.xlsx

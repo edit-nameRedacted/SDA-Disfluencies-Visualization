@@ -1,0 +1,486 @@
+<title>Conversations by Topic</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column, two figures. Figure 1 is a row of umbrella bars on one
+   axis. Figure 2 is a wrapping grid of small topic tiles, one block per umbrella. */
+:root {
+  --plane: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --hair: #e1e0d9;
+  --rule: #c3c2b7;
+  /* sentence types: blue = complete clause (strong = fluent, quiet = with a disfluency),
+     orange = clause left unfinished, green = no clause, grey = response token */
+  --t-fluent: #184f95;
+  --t-disfl: #6da7ec;
+  --t-unfin: #eb6834;
+  --t-frag: #1baf7a;
+  --t-resp: #c3c2b7;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --hair: #2c2c2a; --rule: #383835;
+    --t-fluent: #5598e7; --t-disfl: #256abf; --t-unfin: #d95926; --t-frag: #199e70; --t-resp: #52514e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+  --hair: #2c2c2a; --rule: #383835;
+  --t-fluent: #5598e7; --t-disfl: #256abf; --t-unfin: #d95926; --t-frag: #199e70; --t-resp: #52514e;
+  color-scheme: dark;
+}
+
+body { background: var(--plane); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.page { max-width: 62rem; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 40px 64px; display: flex; flex-direction: column; gap: 28px; }
+
+.intro { display: flex; flex-direction: column; gap: 10px; max-width: 42rem; }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+h1 { margin: 0; font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem); line-height: 1.15; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--ink-2); font-size: 16px; }
+
+.figure { background: var(--surface); border: 1px solid var(--hair); border-radius: 6px; padding: clamp(16px, 3vw, 28px); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.fig-head { display: flex; flex-direction: column; gap: 4px; max-width: 44rem; }
+h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
+.sub { margin: 0; color: var(--ink-2); font-size: 14px; }
+
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--ink-2); }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.sw { flex: none; width: 10px; height: 14px; border-radius: 1px; }
+.t0 { background: var(--t-fluent); fill: var(--t-fluent); }
+.t1 { background: var(--t-disfl); fill: var(--t-disfl); }
+.t2 { background: var(--t-unfin); fill: var(--t-unfin); }
+.t3 { background: var(--t-frag); fill: var(--t-frag); }
+.t4 { background: var(--t-resp); fill: var(--t-resp); }
+
+/* Figure 1: umbrella bars */
+.ov-scroll { overflow-x: auto; }
+.ov-inner { min-width: 720px; padding-left: 46px; }
+#ov { display: block; width: 100%; overflow: visible; }
+#ov .grid { stroke: var(--hair); stroke-width: 1; }
+#ov .base { stroke: var(--rule); stroke-width: 1; }
+#ov text { font-family: var(--sans); font-size: 12px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+#ov text.cap { fill: var(--ink); font-weight: 500; }
+#ov .slot { fill: transparent; cursor: pointer; }
+.ov-labels { display: grid; margin-top: 8px; }
+.ov-labels button { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 4px; text-align: center; font-size: 12px; line-height: 1.3; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ov-labels button:hover .u-name { text-decoration: underline; }
+.ov-labels button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: 3px; }
+.u-name { font-weight: 500; overflow-wrap: anywhere; }
+.u-n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cursor { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+
+/* Figure 2: one block per umbrella, a wrapping row of topic tiles */
+.scale-key { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.scale-key svg { flex: none; overflow: visible; }
+.scale-key line { stroke: var(--ink-2); stroke-width: 1.5; }
+.sections { display: flex; flex-direction: column; gap: 30px; }
+.umb { display: flex; flex-direction: column; gap: 14px; padding-top: 18px; border-top: 1px solid var(--hair); scroll-margin-top: 12px; }
+.umb-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.umb-meta { margin: 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tiles { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: flex-start; }
+.tile { margin: 0; display: flex; flex-direction: column; gap: 6px; width: max(var(--w), 5.25rem); }
+.tile svg { display: block; touch-action: pan-y; cursor: crosshair; overflow: visible; border-radius: 2px; }
+.tile svg:focus { outline: none; }
+.tile svg:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.tile .grid { stroke: var(--hair); stroke-width: 1; }
+.tile .base { stroke: var(--rule); stroke-width: 1; }
+.tile figcaption { display: flex; flex-direction: column; font-size: 12px; line-height: 1.3; }
+.t-name { font-weight: 500; }
+.t-n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tile.avg { padding-right: 22px; border-right: 1px solid var(--hair); box-sizing: content-box; }
+
+.tip { position: fixed; z-index: 10; left: 0; top: 0; width: max-content; max-width: min(22rem, calc(100vw - 24px)); background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 5px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16); pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
+.tip-title { font-size: 13px; font-weight: 600; }
+.tip-meta { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tip-rows { display: grid; grid-template-columns: auto 1fr auto auto; gap: 3px 10px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.tip-rows .key { width: 12px; height: 3px; border-radius: 1px; }
+.tip-rows .lab { color: var(--ink-2); }
+.tip-rows .pct { font-weight: 600; text-align: right; }
+.tip-rows .wds { color: var(--ink-2); text-align: right; }
+
+.numbers summary { cursor: pointer; font-size: 13px; color: var(--ink-2); width: fit-content; }
+.numbers summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.table-scroll { overflow-x: auto; margin-top: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 44rem; font-size: 13px; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: var(--ink-2); font-size: 12px; padding-bottom: 8px; }
+th, td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--hair); }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+thead th { font-weight: 500; color: var(--ink-2); vertical-align: bottom; }
+thead th .sw { display: inline-block; height: 12px; margin-right: 6px; vertical-align: -1px; }
+tbody th { font-weight: 400; padding-left: 16px; }
+tbody tr.umb-row th, tbody tr.umb-row td { font-weight: 600; padding-top: 12px; }
+tbody tr.umb-row th { padding-left: 0; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 20px 40px; max-width: 54rem; }
+.notes h2 { margin: 0 0 6px; font-size: 14px; }
+.notes p { margin: 0; color: var(--ink-2); font-size: 14px; }
+.notes div { min-width: 0; }
+</style>
+
+<main class="page">
+  <header class="intro">
+    <p class="eyebrow">Switchboard corpus · proof of concept</p>
+    <h1>Ten topic umbrellas, 650 phone calls</h1>
+    <p class="lede">Every bar is a stack of words. Its height is the length of a call, and its colors split those words by the kind of utterance they sit in. The first chart averages the calls under each umbrella. The second shows every call, grouped by topic.</p>
+  </header>
+
+  <section class="figure" aria-labelledby="h-umbrellas">
+    <div class="fig-head">
+      <h2 id="h-umbrellas">The average call under each umbrella</h2>
+      <p class="sub">Height is the average number of words per call. The percentage beside each bar is the share of those words spoken in fluent complete sentences, and the umbrellas run from the highest share to the lowest. Select an umbrella to jump to its calls.</p>
+    </div>
+    <ul class="legend"></ul>
+    <div class="ov-scroll">
+      <div class="ov-inner">
+        <svg id="ov" role="img" aria-label="Stacked bars of average words per call for each topic umbrella"></svg>
+        <div class="ov-labels" id="ov-labels"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="figure" aria-labelledby="h-calls">
+    <div class="fig-head">
+      <h2 id="h-calls">Every call, grouped by topic</h2>
+      <p class="sub">One thin bar per call, all on the same scale. Topics run alphabetically inside each umbrella, with the longest call first in each topic. The wider bar at the start of each row repeats the umbrella's average.</p>
+    </div>
+    <ul class="legend"></ul>
+    <div class="scale-key" id="scale-key"></div>
+    <div class="sections" id="sections"></div>
+  </section>
+
+  <details class="numbers">
+    <summary>Show the numbers by umbrella and topic</summary>
+    <div class="table-scroll"><table id="numbers"></table></div>
+  </details>
+
+  <section class="notes">
+    <div>
+      <h2>How the umbrellas were made</h2>
+      <p>Each call was recorded under one assigned topic. The 64 topics that appear here are grouped into ten umbrellas by subject. The grouping is an editorial choice, not part of the corpus, and it lives in one table at the top of the build script.</p>
+    </div>
+    <div>
+      <h2>How the shares are counted</h2>
+      <p>Each word takes the color of the utterance it belongs to. Shares for an umbrella or a topic pool all of its words, so longer calls weigh more than shorter ones.</p>
+    </div>
+    <div>
+      <h2>What is included</h2>
+      <p>The 650 conversations that have a syntactic parse, out of 1,155. Two topics have no parsed calls and do not appear. The topic is the prompt the callers were given, not a coding of what they said.</p>
+    </div>
+  </section>
+</main>
+
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script id="topic-data" type="application/json">{"types":["complete_fluent","complete_disfluent","unfinished","fragment","response_token"],"conversations":[{"id":2005,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[324,910,244,112,99]},{"id":2008,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[344,205,61,20,50]},{"id":2010,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[365,511,118,67,31]},{"id":2012,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[622,1021,149,191,55]},{"id":2015,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[667,382,117,56,38]},{"id":2018,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[819,235,140,69,81]},{"id":2020,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[540,787,376,128,77]},{"id":2022,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[226,719,118,118,33]},{"id":2024,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[198,817,40,59,35]},{"id":2027,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[1205,726,71,78,56]},{"id":2028,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[551,703,91,110,78]},{"id":2032,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[687,582,143,186,131]},{"id":2035,"topic":"Family life","umbrella":"Family","year":"1991","w":[408,502,107,24,52]},{"id":2039,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[530,441,167,48,78]},{"id":2041,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[525,1088,299,67,85]},{"id":2051,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[995,265,79,117,61]},{"id":2053,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[536,247,61,58,78]},{"id":2060,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[416,315,85,39,48]},{"id":2061,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[741,966,286,245,136]},{"id":2062,"topic":"Job benefits","umbrella":"Money & work","year":"1991","w":[783,1011,150,26,43]},{"id":2065,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[926,671,358,91,84]},{"id":2067,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[358,397,29,29,45]},{"id":2072,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[512,327,88,83,62]},{"id":2073,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[428,797,118,21,80]},{"id":2078,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[1260,539,62,119,99]},{"id":2079,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[390,416,37,37,27]},{"id":2092,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[532,626,109,190,73]},{"id":2093,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[582,421,74,64,44]},{"id":2094,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[352,771,99,72,50]},{"id":2095,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[249,479,112,20,43]},{"id":2102,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[701,633,121,123,72]},{"id":2104,"topic":"Soviet Union","umbrella":"Politics & world affairs","year":"1991","w":[218,169,59,0,12]},{"id":2105,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[601,267,50,36,80]},{"id":2107,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[1281,430,40,57,133]},{"id":2109,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[312,841,46,61,62]},{"id":2111,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[808,621,163,73,78]},{"id":2113,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[540,231,95,62,56]},{"id":2120,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[28,150,15,11,18]},{"id":2121,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[467,902,252,110,77]},{"id":2124,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[347,330,46,47,34]},{"id":2130,"topic":"Politics","umbrella":"Politics & world affairs","year":"1991","w":[216,812,153,82,54]},{"id":2131,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[519,942,211,89,121]},{"id":2137,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[146,455,91,46,13]},{"id":2139,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[521,801,275,47,67]},{"id":2145,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[244,919,89,103,53]},{"id":2151,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[129,296,108,61,26]},{"id":2154,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[644,853,34,7,28]},{"id":2157,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[815,683,144,110,41]},{"id":2160,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[599,494,92,71,57]},{"id":2163,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[276,212,32,2,52]},{"id":2171,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[599,950,117,54,51]},{"id":2177,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[441,369,66,48,81]},{"id":2184,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[522,542,88,74,100]},{"id":2187,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[886,666,230,128,90]},{"id":2220,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[947,643,118,162,68]},{"id":2226,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[591,571,112,127,106]},{"id":2229,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[672,660,99,60,75]},{"id":2231,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[550,384,355,95,64]},{"id":2241,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[361,1332,99,82,86]},{"id":2247,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[239,540,38,25,45]},{"id":2249,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[724,942,110,39,59]},{"id":2252,"topic":"Soviet Union","umbrella":"Politics & world affairs","year":"1991","w":[531,970,353,177,71]},{"id":2253,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[967,591,229,208,96]},{"id":2259,"topic":"Immigration","umbrella":"Politics & world affairs","year":"1991","w":[131,578,98,4,28]},{"id":2260,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[973,564,121,89,103]},{"id":2264,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[638,245,70,40,35]},{"id":2266,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[474,284,100,24,63]},{"id":2275,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[671,870,128,85,68]},{"id":2279,"topic":"Family life","umbrella":"Family","year":"1991","w":[779,596,177,220,103]},{"id":2285,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[889,685,181,93,59]},{"id":2290,"topic":"Fishing","umbrella":"Sports & outdoors","year":"1991","w":[673,703,157,47,61]},{"id":2295,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[635,344,40,50,73]},{"id":2299,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[856,281,186,23,71]},{"id":2302,"topic":"Trial by jury","umbrella":"Law & justice","year":"1991","w":[350,552,108,53,43]},{"id":2304,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[515,566,160,130,96]},{"id":2305,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[512,906,266,36,99]},{"id":2314,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[496,526,74,133,55]},{"id":2316,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[817,619,253,104,35]},{"id":2324,"topic":"Metric system","umbrella":"Science & environment","year":"1991","w":[564,343,76,66,41]},{"id":2330,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[433,235,31,21,36]},{"id":2331,"topic":"Golf","umbrella":"Sports & outdoors","year":"1991","w":[880,651,203,17,79]},{"id":2334,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[980,483,92,135,83]},{"id":2336,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[409,778,169,33,51]},{"id":2349,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[466,421,154,16,71]},{"id":2362,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[746,947,154,72,93]},{"id":2365,"topic":"Painting","umbrella":"Home & hobbies","year":"1991","w":[533,604,294,106,64]},{"id":2366,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[440,1010,163,46,26]},{"id":2370,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[665,980,347,276,85]},{"id":2372,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[785,751,97,46,79]},{"id":2382,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[1034,467,151,71,59]},{"id":2383,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[178,648,36,85,25]},{"id":2395,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[738,797,103,60,51]},{"id":2397,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[962,584,142,47,56]},{"id":2399,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[319,653,94,28,80]},{"id":2405,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[1289,594,164,66,70]},{"id":2406,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[627,729,58,114,69]},{"id":2407,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[660,936,107,58,40]},{"id":2421,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[308,809,174,167,72]},{"id":2423,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[681,1007,165,129,98]},{"id":2427,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[1246,981,108,105,161]},{"id":2429,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[661,856,222,145,64]},{"id":2433,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[1199,445,139,208,97]},{"id":2434,"topic":"Gun control","umbrella":"Law & justice","year":"1991","w":[587,1078,164,108,50]},{"id":2435,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[1159,634,172,98,109]},{"id":2436,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[864,480,148,74,84]},{"id":2439,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[1031,682,62,132,103]},{"id":2441,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[908,798,108,162,97]},{"id":2442,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[761,324,40,30,51]},{"id":2445,"topic":"Camping","umbrella":"Sports & outdoors","year":"1991","w":[718,818,187,35,72]},{"id":2451,"topic":"Soviet Union","umbrella":"Politics & world affairs","year":"1991","w":[392,873,143,11,27]},{"id":2455,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[456,621,71,32,64]},{"id":2460,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[525,1322,269,116,44]},{"id":2461,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[364,868,147,104,60]},{"id":2465,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[830,546,208,48,116]},{"id":2466,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[658,620,75,46,52]},{"id":2469,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[1078,509,193,98,79]},{"id":2472,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[807,644,164,139,104]},{"id":2477,"topic":"Basketball","umbrella":"Sports & outdoors","year":"1991","w":[563,752,195,92,96]},{"id":2479,"topic":"Child care","umbrella":"Family","year":"1991","w":[1289,606,356,48,144]},{"id":2485,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[1145,559,331,119,133]},{"id":2486,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[476,912,87,207,68]},{"id":2488,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[1127,927,265,55,121]},{"id":2490,"topic":"Gun control","umbrella":"Law & justice","year":"1991","w":[924,723,297,214,113]},{"id":2492,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[839,347,55,77,37]},{"id":2499,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[1025,766,121,194,143]},{"id":2501,"topic":"Painting","umbrella":"Home & hobbies","year":"1991","w":[335,352,61,53,38]},{"id":2502,"topic":"Latin America","umbrella":"Politics & world affairs","year":"1991","w":[462,898,266,175,62]},{"id":2503,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[446,1095,145,90,63]},{"id":2504,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[742,847,60,361,59]},{"id":2510,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[735,829,170,112,103]},{"id":2521,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[908,713,218,154,90]},{"id":2525,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[785,879,190,141,85]},{"id":2526,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[731,757,273,41,98]},{"id":2527,"topic":"Camping","umbrella":"Sports & outdoors","year":"1991","w":[443,517,73,38,46]},{"id":2533,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[1462,518,181,129,64]},{"id":2539,"topic":"Family life","umbrella":"Family","year":"1991","w":[800,837,171,66,63]},{"id":2540,"topic":"Gun control","umbrella":"Law & justice","year":"1991","w":[297,549,144,50,38]},{"id":2545,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[613,655,129,83,99]},{"id":2546,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[173,915,36,65,34]},{"id":2547,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[487,547,403,48,63]},{"id":2548,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[770,399,29,8,65]},{"id":2549,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[497,1046,119,91,109]},{"id":2554,"topic":"Middle East","umbrella":"Politics & world affairs","year":"1991","w":[701,965,230,22,117]},{"id":2558,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[404,647,42,94,47]},{"id":2559,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[450,519,44,94,44]},{"id":2565,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[381,408,31,54,62]},{"id":2566,"topic":"Child care","umbrella":"Family","year":"1991","w":[1026,564,122,190,119]},{"id":2568,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[923,632,161,33,93]},{"id":2571,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[536,863,176,142,46]},{"id":2584,"topic":"Camping","umbrella":"Sports & outdoors","year":"1991","w":[829,765,156,63,109]},{"id":2587,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[400,566,127,31,68]},{"id":2589,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[647,852,188,80,35]},{"id":2593,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[254,261,102,22,43]},{"id":2597,"topic":"Middle East","umbrella":"Politics & world affairs","year":"1991","w":[528,832,120,65,46]},{"id":2598,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[672,968,226,123,124]},{"id":2599,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[813,419,5,92,45]},{"id":2602,"topic":"Soviet Union","umbrella":"Politics & world affairs","year":"1991","w":[898,402,84,32,33]},{"id":2603,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[1130,564,114,142,67]},{"id":2604,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[384,1268,154,168,57]},{"id":2608,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[913,824,100,115,125]},{"id":2609,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[847,794,186,193,44]},{"id":2611,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[497,1141,101,68,64]},{"id":2615,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1991","w":[766,864,329,75,75]},{"id":2617,"topic":"Vietnam War","umbrella":"Politics & world affairs","year":"1991","w":[680,903,97,92,57]},{"id":2619,"topic":"Metric system","umbrella":"Science & environment","year":"1991","w":[437,452,136,97,38]},{"id":2627,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[930,688,127,71,161]},{"id":2628,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[979,568,314,168,71]},{"id":2634,"topic":"Gun control","umbrella":"Law & justice","year":"1991","w":[714,654,333,118,49]},{"id":2640,"topic":"Trial by jury","umbrella":"Law & justice","year":"1991","w":[434,583,94,17,40]},{"id":2641,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[985,940,232,98,86]},{"id":2645,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[566,471,173,55,67]},{"id":2648,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[484,862,453,129,78]},{"id":2650,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[1030,740,198,43,93]},{"id":2653,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[659,438,85,44,52]},{"id":2657,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[628,669,332,95,56]},{"id":2658,"topic":"Consumer goods","umbrella":"Money & work","year":"1991","w":[1087,647,262,118,90]},{"id":2667,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[1306,737,81,51,79]},{"id":2669,"topic":"Metric system","umbrella":"Science & environment","year":"1991","w":[968,606,218,121,51]},{"id":2672,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[669,823,107,47,48]},{"id":2676,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[1119,491,88,151,95]},{"id":2678,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[220,471,80,96,96]},{"id":2691,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[262,495,38,50,64]},{"id":2703,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[887,1107,249,49,102]},{"id":2708,"topic":"Federal budget","umbrella":"Politics & world affairs","year":"1991","w":[456,847,219,109,35]},{"id":2710,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[510,1007,70,102,63]},{"id":2717,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[586,975,292,49,56]},{"id":2719,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[944,622,90,96,73]},{"id":2724,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[596,856,105,111,74]},{"id":2729,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[612,882,192,50,103]},{"id":2734,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[760,824,98,40,56]},{"id":2743,"topic":"Consumer goods","umbrella":"Money & work","year":"1991","w":[370,175,9,17,25]},{"id":2749,"topic":"Trial by jury","umbrella":"Law & justice","year":"1991","w":[295,763,245,76,46]},{"id":2756,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[757,838,140,82,112]},{"id":2759,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[544,533,115,23,55]},{"id":2761,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[429,403,31,26,60]},{"id":2772,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[1102,525,48,89,92]},{"id":2775,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[1135,463,92,64,54]},{"id":2782,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[529,558,210,129,61]},{"id":2784,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[371,1190,343,46,42]},{"id":2785,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[629,637,137,40,89]},{"id":2789,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[770,686,167,101,120]},{"id":2790,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[377,819,141,58,54]},{"id":2792,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[867,660,188,150,87]},{"id":2800,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[480,511,73,31,63]},{"id":2818,"topic":"Child care","umbrella":"Family","year":"1991","w":[790,638,107,112,88]},{"id":2819,"topic":"Social change","umbrella":"Education & society","year":"1991","w":[567,430,65,41,73]},{"id":2826,"topic":"Social change","umbrella":"Education & society","year":"1991","w":[459,759,346,84,67]},{"id":2828,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[507,709,165,139,47]},{"id":2832,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[1390,403,117,98,97]},{"id":2835,"topic":"Social change","umbrella":"Education & society","year":"1991","w":[543,918,31,19,65]},{"id":2836,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[502,1074,70,169,81]},{"id":2837,"topic":"Home repairs","umbrella":"Home & hobbies","year":"1991","w":[485,1113,200,74,108]},{"id":2840,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[539,826,190,93,61]},{"id":2851,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[530,577,117,68,105]},{"id":2858,"topic":"Family life","umbrella":"Family","year":"1991","w":[418,794,98,37,59]},{"id":2860,"topic":"Family life","umbrella":"Family","year":"1991","w":[663,980,279,62,85]},{"id":2866,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[636,890,157,53,88]},{"id":2868,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[373,1011,156,104,77]},{"id":2870,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[782,672,251,169,101]},{"id":2876,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[278,514,153,29,80]},{"id":2877,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[658,728,141,58,89]},{"id":2883,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[223,396,94,58,31]},{"id":2893,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[1047,539,130,87,80]},{"id":2896,"topic":"Painting","umbrella":"Home & hobbies","year":"1991","w":[751,606,73,125,60]},{"id":2910,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[405,537,90,67,51]},{"id":2913,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[1126,585,147,92,87]},{"id":2932,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[752,633,139,40,14]},{"id":2938,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[926,802,135,99,109]},{"id":2945,"topic":"Family life","umbrella":"Family","year":"1991","w":[459,920,221,52,117]},{"id":2956,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[570,1024,361,151,60]},{"id":2962,"topic":"Trial by jury","umbrella":"Law & justice","year":"1991","w":[260,940,248,172,50]},{"id":2965,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1991","w":[399,848,208,36,50]},{"id":2969,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[974,802,94,150,72]},{"id":2970,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[1049,877,502,144,101]},{"id":2989,"topic":"Family life","umbrella":"Family","year":"1991","w":[210,563,33,56,37]},{"id":2998,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[376,678,195,101,60]},{"id":3011,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[377,684,114,58,75]},{"id":3012,"topic":"Middle East","umbrella":"Politics & world affairs","year":"1991","w":[444,630,151,38,55]},{"id":3015,"topic":"Universal health insurance","umbrella":"Politics & world affairs","year":"1991","w":[123,845,223,105,40]},{"id":3020,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[679,624,126,57,91]},{"id":3021,"topic":"Gun control","umbrella":"Law & justice","year":"1991","w":[672,560,174,20,79]},{"id":3023,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[318,727,359,30,48]},{"id":3030,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[454,772,118,84,77]},{"id":3038,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[231,833,132,21,38]},{"id":3040,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[291,576,146,51,53]},{"id":3041,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[669,530,248,111,62]},{"id":3045,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[427,874,81,126,75]},{"id":3047,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[306,629,121,178,83]},{"id":3049,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[850,496,44,38,65]},{"id":3051,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[751,422,126,171,67]},{"id":3052,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[491,639,68,90,46]},{"id":3056,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[429,732,213,92,38]},{"id":3062,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[657,688,71,31,65]},{"id":3067,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[413,751,129,49,71]},{"id":3068,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[446,939,100,59,63]},{"id":3069,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[479,744,221,198,116]},{"id":3070,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[642,691,99,16,46]},{"id":3072,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[712,455,80,74,62]},{"id":3073,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[595,800,131,59,50]},{"id":3074,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[434,853,217,123,86]},{"id":3075,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[737,668,48,29,46]},{"id":3080,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[628,476,158,69,73]},{"id":3081,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[500,515,99,77,53]},{"id":3082,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[702,381,58,35,67]},{"id":3083,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[329,747,98,72,23]},{"id":3085,"topic":"Child care","umbrella":"Family","year":"1991","w":[677,772,99,37,96]},{"id":3086,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[628,551,92,32,46]},{"id":3088,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[309,634,253,91,55]},{"id":3090,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[508,784,148,95,82]},{"id":3093,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[300,656,137,35,42]},{"id":3096,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[381,919,106,113,136]},{"id":3097,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[792,550,80,23,113]},{"id":3099,"topic":"Child care","umbrella":"Family","year":"1991","w":[663,722,173,55,78]},{"id":3103,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[344,924,74,60,71]},{"id":3108,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[522,429,33,41,87]},{"id":3111,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[339,822,256,77,77]},{"id":3113,"topic":"Trial by jury","umbrella":"Law & justice","year":"1991","w":[188,708,145,153,31]},{"id":3115,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[443,896,159,79,58]},{"id":3120,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[519,562,112,41,24]},{"id":3124,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[952,400,95,84,71]},{"id":3130,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[576,756,63,60,80]},{"id":3131,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[785,512,117,45,55]},{"id":3133,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[309,670,135,39,55]},{"id":3134,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[530,557,87,128,55]},{"id":3135,"topic":"Child care","umbrella":"Family","year":"1991","w":[827,548,53,29,100]},{"id":3138,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[675,571,147,54,92]},{"id":3140,"topic":"Social change","umbrella":"Education & society","year":"1991","w":[411,458,200,33,46]},{"id":3142,"topic":"Restaurants","umbrella":"Small talk","year":"1991","w":[359,847,91,49,62]},{"id":3144,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[725,572,126,60,54]},{"id":3146,"topic":"Restaurants","umbrella":"Small talk","year":"1991","w":[539,738,107,41,69]},{"id":3148,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[483,587,178,83,30]},{"id":3150,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[459,757,195,107,49]},{"id":3152,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[529,549,101,56,82]},{"id":3154,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[366,790,137,66,48]},{"id":3155,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[414,466,59,50,56]},{"id":3156,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[358,480,190,21,24]},{"id":3159,"topic":"Magazines","umbrella":"Entertainment & media","year":"1991","w":[376,431,41,31,37]},{"id":3161,"topic":"AIDS","umbrella":"Education & society","year":"1991","w":[204,620,130,9,11]},{"id":3168,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[251,429,219,62,27]},{"id":3169,"topic":"Boating and sailing","umbrella":"Sports & outdoors","year":"1991","w":[449,560,61,5,5]},{"id":3171,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[588,246,120,42,29]},{"id":3173,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[187,134,20,45,20]},{"id":3174,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[315,419,185,57,43]},{"id":3182,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[512,179,45,46,13]},{"id":3186,"topic":"Restaurants","umbrella":"Small talk","year":"1991","w":[386,384,90,36,52]},{"id":3187,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[542,152,38,35,30]},{"id":3188,"topic":"Painting","umbrella":"Home & hobbies","year":"1991","w":[579,433,76,48,40]},{"id":3195,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[582,287,61,6,21]},{"id":3200,"topic":"Family finance","umbrella":"Money & work","year":"1991","w":[661,348,150,71,47]},{"id":3201,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[305,494,47,25,51]},{"id":3202,"topic":"Family reunions","umbrella":"Family","year":"1991","w":[187,77,40,17,11]},{"id":3205,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[348,195,76,49,31]},{"id":3206,"topic":"Elections and voting","umbrella":"Politics & world affairs","year":"1991","w":[314,288,149,11,19]},{"id":3207,"topic":"Care of the elderly","umbrella":"Family","year":"1991","w":[415,522,85,20,22]},{"id":3215,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[437,146,18,47,17]},{"id":3219,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[380,548,31,9,25]},{"id":3223,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[358,447,146,37,52]},{"id":3227,"topic":"Music","umbrella":"Entertainment & media","year":"1991","w":[276,333,69,11,33]},{"id":3229,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[373,368,67,85,46]},{"id":3232,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[448,430,23,64,61]},{"id":3235,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[433,343,76,35,22]},{"id":3236,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[393,442,50,22,49]},{"id":3237,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[536,317,63,42,92]},{"id":3238,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[450,426,46,48,30]},{"id":3239,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[381,349,33,58,45]},{"id":3242,"topic":"Drug testing","umbrella":"Law & justice","year":"1991","w":[468,269,112,110,42]},{"id":3245,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[535,282,96,102,57]},{"id":3246,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[540,327,44,52,30]},{"id":3251,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[542,363,35,43,42]},{"id":3252,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[523,342,42,10,21]},{"id":3254,"topic":"Restaurants","umbrella":"Small talk","year":"1991","w":[593,281,73,17,41]},{"id":3256,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[257,429,118,57,30]},{"id":3259,"topic":"Restaurants","umbrella":"Small talk","year":"1991","w":[469,458,69,47,72]},{"id":3260,"topic":"Family life","umbrella":"Family","year":"1991","w":[366,438,85,27,59]},{"id":3266,"topic":"Child care","umbrella":"Family","year":"1991","w":[627,253,51,66,38]},{"id":3268,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[356,487,75,23,38]},{"id":3269,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[583,352,38,79,27]},{"id":3275,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[530,324,103,22,57]},{"id":3279,"topic":"Federal budget","umbrella":"Politics & world affairs","year":"1991","w":[266,528,44,9,36]},{"id":3283,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[322,368,77,25,25]},{"id":3284,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[106,399,216,21,31]},{"id":3286,"topic":"Immigration","umbrella":"Politics & world affairs","year":"1991","w":[451,221,34,37,44]},{"id":3288,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1991","w":[492,315,122,145,70]},{"id":3294,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[237,551,114,105,36]},{"id":3296,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[665,245,40,77,60]},{"id":3300,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[389,238,63,75,43]},{"id":3303,"topic":"Basketball","umbrella":"Sports & outdoors","year":"1991","w":[352,122,20,34,24]},{"id":3304,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[325,358,51,122,59]},{"id":3306,"topic":"Boating and sailing","umbrella":"Sports & outdoors","year":"1991","w":[462,372,69,38,72]},{"id":3309,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[230,511,65,18,25]},{"id":3311,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[723,215,34,64,82]},{"id":3313,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[425,322,73,8,24]},{"id":3315,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[415,331,30,33,59]},{"id":3317,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[734,262,42,33,34]},{"id":3320,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[324,420,119,66,39]},{"id":3324,"topic":"Family life","umbrella":"Family","year":"1991","w":[247,607,71,22,53]},{"id":3325,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[754,293,87,47,59]},{"id":3327,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1991","w":[229,351,89,45,31]},{"id":3328,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[453,233,32,41,30]},{"id":3331,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[198,308,1,26,50]},{"id":3333,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[474,320,86,118,61]},{"id":3334,"topic":"Latin America","umbrella":"Politics & world affairs","year":"1991","w":[152,481,119,11,29]},{"id":3338,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[530,298,38,64,52]},{"id":3342,"topic":"Fishing","umbrella":"Sports & outdoors","year":"1991","w":[583,344,69,18,36]},{"id":3343,"topic":"Consumer goods","umbrella":"Money & work","year":"1991","w":[275,465,114,20,39]},{"id":3344,"topic":"Politics","umbrella":"Politics & world affairs","year":"1991","w":[281,515,37,14,10]},{"id":3345,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[484,264,83,53,55]},{"id":3349,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[596,269,72,26,22]},{"id":3351,"topic":"Pets","umbrella":"Home & hobbies","year":"1991","w":[353,329,48,40,57]},{"id":3353,"topic":"Camping","umbrella":"Sports & outdoors","year":"1991","w":[206,602,51,15,23]},{"id":3354,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[720,344,67,79,60]},{"id":3360,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[257,343,130,12,23]},{"id":3362,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[248,433,23,38,35]},{"id":3364,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[598,233,111,64,55]},{"id":3365,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[163,550,70,118,64]},{"id":3367,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[137,431,84,120,35]},{"id":3368,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[629,223,41,66,65]},{"id":3369,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[180,585,46,25,33]},{"id":3375,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[330,429,42,100,36]},{"id":3377,"topic":"Golf","umbrella":"Sports & outdoors","year":"1991","w":[472,280,26,14,31]},{"id":3382,"topic":"Space flight and exploration","umbrella":"Science & environment","year":"1991","w":[200,579,103,34,43]},{"id":3387,"topic":"Federal budget","umbrella":"Politics & world affairs","year":"1991","w":[187,429,44,114,36]},{"id":3389,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[538,306,47,40,46]},{"id":3393,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[293,497,78,51,35]},{"id":3397,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[277,280,16,27,69]},{"id":3398,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[352,445,45,20,37]},{"id":3399,"topic":"Social change","umbrella":"Education & society","year":"1991","w":[246,417,51,9,38]},{"id":3403,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1991","w":[468,411,21,28,21]},{"id":3406,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[276,398,132,34,31]},{"id":3408,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[370,395,41,39,30]},{"id":3409,"topic":"Credit card use","umbrella":"Money & work","year":"1991","w":[312,263,73,25,61]},{"id":3411,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[305,433,85,22,57]},{"id":3417,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[212,452,77,21,28]},{"id":3420,"topic":"Child care","umbrella":"Family","year":"1991","w":[255,565,54,50,39]},{"id":3425,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[197,244,38,25,26]},{"id":3427,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[322,492,67,88,16]},{"id":3435,"topic":"Golf","umbrella":"Sports & outdoors","year":"1991","w":[416,431,126,40,23]},{"id":3441,"topic":"Right to privacy","umbrella":"Law & justice","year":"1991","w":[250,327,58,50,35]},{"id":3443,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1991","w":[621,240,72,41,74]},{"id":3445,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[524,200,25,21,35]},{"id":3447,"topic":"Clothing and dress","umbrella":"Small talk","year":"1991","w":[334,156,2,74,52]},{"id":3449,"topic":"Politics","umbrella":"Politics & world affairs","year":"1991","w":[348,512,56,40,37]},{"id":3450,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[414,302,42,64,20]},{"id":3458,"topic":"Magazines","umbrella":"Entertainment & media","year":"1991","w":[243,368,105,72,33]},{"id":3467,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[660,367,55,40,73]},{"id":3473,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[371,541,123,37,52]},{"id":3476,"topic":"Metric system","umbrella":"Science & environment","year":"1991","w":[335,387,25,49,31]},{"id":3487,"topic":"Choosing a college","umbrella":"Education & society","year":"1991","w":[204,486,123,24,24]},{"id":3491,"topic":"Movies","umbrella":"Entertainment & media","year":"1991","w":[383,276,26,91,63]},{"id":3495,"topic":"Crime","umbrella":"Law & justice","year":"1991","w":[251,516,113,11,22]},{"id":3497,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[511,155,31,130,70]},{"id":3503,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[493,335,131,109,63]},{"id":3506,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[164,398,55,68,33]},{"id":3508,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[441,372,82,79,72]},{"id":3509,"topic":"Capital punishment","umbrella":"Law & justice","year":"1991","w":[192,604,126,46,39]},{"id":3513,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[445,173,30,120,57]},{"id":3514,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[247,238,36,36,51]},{"id":3515,"topic":"Recycling","umbrella":"Science & environment","year":"1991","w":[187,517,76,74,48]},{"id":3517,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[427,412,16,14,39]},{"id":3523,"topic":"Women's roles","umbrella":"Education & society","year":"1991","w":[296,430,57,101,42]},{"id":3524,"topic":"Family life","umbrella":"Family","year":"1991","w":[439,386,86,81,68]},{"id":3525,"topic":"Golf","umbrella":"Sports & outdoors","year":"1991","w":[443,626,96,22,33]},{"id":3526,"topic":"Computers","umbrella":"Science & environment","year":"1991","w":[347,383,60,47,55]},{"id":3537,"topic":"Universal health insurance","umbrella":"Politics & world affairs","year":"1991","w":[363,362,100,39,13]},{"id":3539,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1991","w":[518,362,63,46,44]},{"id":3541,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1991","w":[231,486,76,28,16]},{"id":3549,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1991","w":[405,394,21,27,62]},{"id":3550,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[440,502,83,58,72]},{"id":3551,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[388,389,35,102,31]},{"id":3557,"topic":"AIDS","umbrella":"Education & society","year":"1991","w":[300,273,35,57,25]},{"id":3561,"topic":"Federal budget","umbrella":"Politics & world affairs","year":"1991","w":[136,603,105,17,28]},{"id":3565,"topic":"Home repairs","umbrella":"Home & hobbies","year":"1991","w":[442,340,94,61,32]},{"id":3569,"topic":"News media","umbrella":"Entertainment & media","year":"1991","w":[293,420,67,27,14]},{"id":3573,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[306,533,75,44,35]},{"id":3574,"topic":"Air pollution","umbrella":"Science & environment","year":"1991","w":[104,606,72,15,35]},{"id":3576,"topic":"Gardening","umbrella":"Home & hobbies","year":"1991","w":[457,400,89,21,40]},{"id":3580,"topic":"Space flight and exploration","umbrella":"Science & environment","year":"1991","w":[361,346,97,47,59]},{"id":3584,"topic":"Houses","umbrella":"Home & hobbies","year":"1991","w":[404,422,52,37,54]},{"id":3586,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1991","w":[652,276,68,113,60]},{"id":3595,"topic":"Books and literature","umbrella":"Entertainment & media","year":"1991","w":[646,278,55,71,57]},{"id":3596,"topic":"Weather and climate","umbrella":"Small talk","year":"1991","w":[355,440,69,100,62]},{"id":3606,"topic":"TV programs","umbrella":"Entertainment & media","year":"1991","w":[596,246,90,45,80]},{"id":3607,"topic":"Home repairs","umbrella":"Home & hobbies","year":"1991","w":[401,351,75,47,34]},{"id":3615,"topic":"Family life","umbrella":"Family","year":"1991","w":[517,285,127,74,53]},{"id":3628,"topic":"Vacation spots","umbrella":"Small talk","year":"1991","w":[363,249,36,44,46]},{"id":3633,"topic":"Consumer goods","umbrella":"Money & work","year":"1991","w":[536,345,104,16,31]},{"id":3636,"topic":"Camping","umbrella":"Sports & outdoors","year":"1991","w":[257,436,5,82,68]},{"id":3638,"topic":"Football","umbrella":"Sports & outdoors","year":"1991","w":[468,247,35,44,36]},{"id":3639,"topic":"Buying a car","umbrella":"Money & work","year":"1991","w":[453,330,73,56,46]},{"id":3646,"topic":"Public education","umbrella":"Education & society","year":"1991","w":[338,489,64,40,28]},{"id":3651,"topic":"Woodworking","umbrella":"Home & hobbies","year":"1992","w":[185,675,30,35,29]},{"id":3655,"topic":"Child care","umbrella":"Family","year":"1992","w":[279,324,160,56,42]},{"id":3658,"topic":"Universal health insurance","umbrella":"Politics & world affairs","year":"1992","w":[283,482,46,41,21]},{"id":3660,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[306,464,106,44,49]},{"id":3663,"topic":"Weather and climate","umbrella":"Small talk","year":"1992","w":[473,290,64,52,58]},{"id":3680,"topic":"Vietnam War","umbrella":"Politics & world affairs","year":"1992","w":[178,461,70,35,21]},{"id":3682,"topic":"Recipes, food and cooking","umbrella":"Home & hobbies","year":"1992","w":[565,358,129,58,80]},{"id":3688,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[308,417,47,83,77]},{"id":3691,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[629,346,52,65,42]},{"id":3697,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1992","w":[319,213,14,26,46]},{"id":3699,"topic":"Houses","umbrella":"Home & hobbies","year":"1992","w":[234,624,72,31,66]},{"id":3707,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[355,451,78,18,33]},{"id":3720,"topic":"Family life","umbrella":"Family","year":"1992","w":[447,435,101,10,49]},{"id":3725,"topic":"Family reunions","umbrella":"Family","year":"1992","w":[396,451,89,54,51]},{"id":3727,"topic":"Family life","umbrella":"Family","year":"1992","w":[469,281,156,51,62]},{"id":3728,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[349,265,259,26,71]},{"id":3746,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1992","w":[530,403,23,69,43]},{"id":3750,"topic":"Camping","umbrella":"Sports & outdoors","year":"1992","w":[413,451,34,14,60]},{"id":3756,"topic":"Painting","umbrella":"Home & hobbies","year":"1992","w":[604,229,42,75,72]},{"id":3763,"topic":"Baseball","umbrella":"Sports & outdoors","year":"1992","w":[229,300,187,46,27]},{"id":3768,"topic":"Vacation spots","umbrella":"Small talk","year":"1992","w":[410,373,64,43,74]},{"id":3773,"topic":"Houses","umbrella":"Home & hobbies","year":"1992","w":[362,561,32,13,56]},{"id":3776,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[105,646,60,11,23]},{"id":3781,"topic":"Credit card use","umbrella":"Money & work","year":"1992","w":[405,438,48,18,56]},{"id":3784,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[245,417,41,53,31]},{"id":3796,"topic":"Basketball","umbrella":"Sports & outdoors","year":"1992","w":[283,641,86,44,35]},{"id":3798,"topic":"AIDS","umbrella":"Education & society","year":"1992","w":[283,587,105,34,75]},{"id":3801,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[214,523,38,25,51]},{"id":3809,"topic":"Women's roles","umbrella":"Education & society","year":"1992","w":[272,402,191,73,26]},{"id":3811,"topic":"Child care","umbrella":"Family","year":"1992","w":[246,546,28,68,36]},{"id":3821,"topic":"Credit card use","umbrella":"Money & work","year":"1992","w":[256,665,111,19,47]},{"id":3825,"topic":"Family reunions","umbrella":"Family","year":"1992","w":[275,514,25,34,18]},{"id":3830,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[331,420,90,107,63]},{"id":3838,"topic":"Hobbies and crafts","umbrella":"Home & hobbies","year":"1992","w":[407,401,61,4,41]},{"id":3850,"topic":"TV programs","umbrella":"Entertainment & media","year":"1992","w":[314,258,47,89,54]},{"id":3862,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[133,460,71,1,43]},{"id":3876,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[704,217,141,54,41]},{"id":3883,"topic":"Clothing and dress","umbrella":"Small talk","year":"1992","w":[386,389,74,15,52]},{"id":3887,"topic":"Air pollution","umbrella":"Science & environment","year":"1992","w":[282,494,101,32,24]},{"id":3902,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[617,236,125,19,32]},{"id":3917,"topic":"Women's roles","umbrella":"Education & society","year":"1992","w":[391,367,144,46,56]},{"id":3925,"topic":"Ethics in government","umbrella":"Politics & world affairs","year":"1992","w":[460,264,127,64,31]},{"id":3962,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[232,544,42,7,40]},{"id":3983,"topic":"Magazines","umbrella":"Entertainment & media","year":"1992","w":[412,298,70,41,44]},{"id":3988,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[309,467,52,73,63]},{"id":3993,"topic":"Painting","umbrella":"Home & hobbies","year":"1992","w":[371,343,34,42,48]},{"id":4004,"topic":"Vietnam War","umbrella":"Politics & world affairs","year":"1992","w":[112,292,112,21,36]},{"id":4008,"topic":"Computers","umbrella":"Science & environment","year":"1992","w":[321,552,94,29,38]},{"id":4013,"topic":"Family life","umbrella":"Family","year":"1992","w":[579,253,25,11,47]},{"id":4019,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[386,336,47,49,64]},{"id":4022,"topic":"Federal budget","umbrella":"Politics & world affairs","year":"1992","w":[357,578,68,62,59]},{"id":4023,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[255,529,97,25,60]},{"id":4026,"topic":"Consumer goods","umbrella":"Money & work","year":"1992","w":[508,165,137,18,23]},{"id":4028,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[286,497,70,29,44]},{"id":4032,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1992","w":[392,384,43,7,57]},{"id":4033,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[399,504,117,50,42]},{"id":4036,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[268,578,82,4,26]},{"id":4038,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[278,505,92,31,35]},{"id":4048,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[283,521,89,45,45]},{"id":4049,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[239,628,149,26,23]},{"id":4050,"topic":"Family reunions","umbrella":"Family","year":"1992","w":[360,315,57,41,57]},{"id":4051,"topic":"Air pollution","umbrella":"Science & environment","year":"1992","w":[135,584,30,18,25]},{"id":4055,"topic":"Camping","umbrella":"Sports & outdoors","year":"1992","w":[347,359,79,12,50]},{"id":4056,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[186,706,34,10,46]},{"id":4060,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[229,442,49,85,42]},{"id":4064,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[126,508,117,5,33]},{"id":4071,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[290,435,96,53,41]},{"id":4072,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[269,453,116,44,43]},{"id":4074,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[420,340,33,55,37]},{"id":4077,"topic":"Gun control","umbrella":"Law & justice","year":"1992","w":[407,444,219,54,38]},{"id":4079,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[397,567,54,14,31]},{"id":4080,"topic":"Gun control","umbrella":"Law & justice","year":"1992","w":[490,308,65,70,64]},{"id":4082,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[138,644,65,89,29]},{"id":4090,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[277,411,90,5,36]},{"id":4092,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[442,231,83,97,67]},{"id":4096,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[350,435,1,28,25]},{"id":4099,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1992","w":[710,244,60,59,49]},{"id":4101,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[168,476,73,74,14]},{"id":4103,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[268,495,81,8,26]},{"id":4104,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[352,417,43,41,28]},{"id":4108,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[244,485,66,82,39]},{"id":4109,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[200,451,107,113,33]},{"id":4113,"topic":"Ethics in government","umbrella":"Politics & world affairs","year":"1992","w":[229,631,98,1,25]},{"id":4114,"topic":"Air pollution","umbrella":"Science & environment","year":"1992","w":[223,648,62,61,43]},{"id":4123,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[205,487,121,113,33]},{"id":4127,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[376,420,71,9,38]},{"id":4129,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[431,259,165,36,40]},{"id":4130,"topic":"AIDS","umbrella":"Education & society","year":"1992","w":[111,501,178,40,40]},{"id":4133,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[271,524,204,40,35]},{"id":4137,"topic":"Buying a car","umbrella":"Money & work","year":"1992","w":[239,535,60,88,48]},{"id":4138,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[202,596,51,15,19]},{"id":4148,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[59,739,38,40,20]},{"id":4149,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[305,550,11,33,64]},{"id":4150,"topic":"Family life","umbrella":"Family","year":"1992","w":[610,256,66,33,43]},{"id":4151,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[75,591,123,24,9]},{"id":4152,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[174,408,163,92,42]},{"id":4153,"topic":"Child care","umbrella":"Family","year":"1992","w":[262,553,76,45,38]},{"id":4154,"topic":"Middle East","umbrella":"Politics & world affairs","year":"1992","w":[88,576,90,79,37]},{"id":4155,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[229,481,92,21,46]},{"id":4158,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[112,499,136,56,47]},{"id":4159,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[408,331,86,136,31]},{"id":4166,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[409,422,70,29,40]},{"id":4168,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[264,669,42,71,88]},{"id":4171,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[263,560,93,27,28]},{"id":4174,"topic":"Choosing a college","umbrella":"Education & society","year":"1992","w":[104,542,70,91,34]},{"id":4175,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[516,320,78,61,42]},{"id":4177,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[348,415,84,120,33]},{"id":4181,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[446,440,162,91,51]},{"id":4184,"topic":"Pets","umbrella":"Home & hobbies","year":"1992","w":[344,436,70,53,60]},{"id":4311,"topic":"Child care","umbrella":"Family","year":"1992","w":[135,490,126,2,17]},{"id":4312,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[120,484,56,69,20]},{"id":4314,"topic":"Boating and sailing","umbrella":"Sports & outdoors","year":"1992","w":[365,495,77,42,88]},{"id":4316,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[252,587,119,28,38]},{"id":4318,"topic":"Buying a car","umbrella":"Money & work","year":"1992","w":[303,563,133,58,44]},{"id":4319,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[173,651,87,42,45]},{"id":4320,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[260,600,61,13,40]},{"id":4321,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[314,336,69,35,9]},{"id":4325,"topic":"Child care","umbrella":"Family","year":"1992","w":[371,246,122,47,48]},{"id":4327,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[393,317,121,85,13]},{"id":4329,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[326,457,65,13,41]},{"id":4330,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[301,579,116,38,20]},{"id":4333,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[193,601,85,39,19]},{"id":4334,"topic":"Music","umbrella":"Entertainment & media","year":"1992","w":[357,556,105,56,56]},{"id":4336,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[211,556,5,89,24]},{"id":4339,"topic":"Buying a car","umbrella":"Money & work","year":"1992","w":[252,542,37,80,25]},{"id":4340,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[289,506,115,38,36]},{"id":4341,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[164,500,49,68,32]},{"id":4342,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[313,545,34,29,31]},{"id":4345,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[48,635,77,7,11]},{"id":4346,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[245,576,19,43,38]},{"id":4347,"topic":"Consumer goods","umbrella":"Money & work","year":"1992","w":[464,444,108,70,43]},{"id":4349,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1992","w":[304,473,98,6,24]},{"id":4353,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[355,529,81,76,71]},{"id":4356,"topic":"Buying a car","umbrella":"Money & work","year":"1992","w":[323,443,86,78,35]},{"id":4358,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[202,535,83,65,13]},{"id":4360,"topic":"Social change","umbrella":"Education & society","year":"1992","w":[113,426,82,57,32]},{"id":4362,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[225,406,212,28,14]},{"id":4363,"topic":"Football","umbrella":"Sports & outdoors","year":"1992","w":[409,515,147,47,70]},{"id":4364,"topic":"Right to privacy","umbrella":"Law & justice","year":"1992","w":[271,418,60,31,21]},{"id":4366,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[186,380,52,64,14]},{"id":4370,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[310,387,80,47,27]},{"id":4372,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[236,617,30,68,6]},{"id":4376,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[217,468,103,33,19]},{"id":4378,"topic":"Home repairs","umbrella":"Home & hobbies","year":"1992","w":[291,371,79,40,53]},{"id":4379,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[390,445,122,95,40]},{"id":4380,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[62,602,202,108,40]},{"id":4382,"topic":"Air pollution","umbrella":"Science & environment","year":"1992","w":[268,391,60,89,25]},{"id":4483,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[345,444,138,77,58]},{"id":4519,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[198,524,26,36,19]},{"id":4548,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[317,523,43,11,32]},{"id":4565,"topic":"Family life","umbrella":"Family","year":"1992","w":[361,327,54,31,30]},{"id":4572,"topic":"Right to privacy","umbrella":"Law & justice","year":"1992","w":[103,447,126,85,16]},{"id":4603,"topic":"Universal public service","umbrella":"Politics & world affairs","year":"1992","w":[58,653,59,52,28]},{"id":4608,"topic":"Crime","umbrella":"Law & justice","year":"1992","w":[320,478,158,55,60]},{"id":4611,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[357,434,147,18,33]},{"id":4617,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[243,456,112,47,48]},{"id":4618,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[621,212,21,58,23]},{"id":4619,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[208,741,71,4,24]},{"id":4626,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[465,457,70,10,21]},{"id":4628,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[225,407,57,156,36]},{"id":4633,"topic":"Family life","umbrella":"Family","year":"1992","w":[597,280,51,35,32]},{"id":4642,"topic":"Auto repairs","umbrella":"Home & hobbies","year":"1992","w":[413,304,27,90,23]},{"id":4646,"topic":"Care of the elderly","umbrella":"Family","year":"1992","w":[411,255,58,100,29]},{"id":4649,"topic":"Child care","umbrella":"Family","year":"1992","w":[382,538,25,3,29]},{"id":4659,"topic":"Social change","umbrella":"Education & society","year":"1992","w":[457,312,52,29,30]},{"id":4679,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[171,532,82,40,23]},{"id":4682,"topic":"Consumer goods","umbrella":"Money & work","year":"1992","w":[502,344,139,4,23]},{"id":4688,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[325,460,136,11,37]},{"id":4691,"topic":"Football","umbrella":"Sports & outdoors","year":"1992","w":[512,336,158,60,55]},{"id":4697,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[314,428,127,76,47]},{"id":4698,"topic":"Computers","umbrella":"Science & environment","year":"1992","w":[226,493,39,41,35]},{"id":4707,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[275,534,67,25,28]},{"id":4720,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[198,595,47,46,31]},{"id":4725,"topic":"Taxes","umbrella":"Politics & world affairs","year":"1992","w":[187,569,169,26,34]},{"id":4728,"topic":"Buying a car","umbrella":"Money & work","year":"1992","w":[349,554,100,75,50]},{"id":4733,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[747,217,23,59,35]},{"id":4736,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[116,671,49,51,7]},{"id":4765,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[255,632,124,39,33]},{"id":4784,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[274,554,54,2,18]},{"id":4785,"topic":"Family life","umbrella":"Family","year":"1992","w":[576,360,19,59,52]},{"id":4792,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[232,464,173,51,50]},{"id":4796,"topic":"Space flight and exploration","umbrella":"Science & environment","year":"1992","w":[99,534,78,87,39]},{"id":4801,"topic":"Capital punishment","umbrella":"Law & justice","year":"1992","w":[351,355,126,45,60]},{"id":4812,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[232,572,20,20,48]},{"id":4826,"topic":"Public education","umbrella":"Education & society","year":"1992","w":[300,433,57,20,45]},{"id":4830,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[225,507,84,72,38]},{"id":4831,"topic":"Job benefits","umbrella":"Money & work","year":"1992","w":[156,695,102,1,16]},{"id":4834,"topic":"Right to privacy","umbrella":"Law & justice","year":"1992","w":[172,446,112,70,25]},{"id":4858,"topic":"Vietnam War","umbrella":"Politics & world affairs","year":"1992","w":[165,506,124,61,21]},{"id":4859,"topic":"News media","umbrella":"Entertainment & media","year":"1992","w":[166,618,105,56,29]},{"id":4868,"topic":"Family finance","umbrella":"Money & work","year":"1992","w":[282,515,143,38,22]},{"id":4876,"topic":"Child care","umbrella":"Family","year":"1992","w":[396,417,150,18,32]},{"id":4877,"topic":"Child care","umbrella":"Family","year":"1992","w":[386,549,56,39,36]},{"id":4880,"topic":"Drug testing","umbrella":"Law & justice","year":"1992","w":[113,498,146,86,27]},{"id":4886,"topic":"Home repairs","umbrella":"Home & hobbies","year":"1992","w":[469,488,151,32,42]},{"id":4890,"topic":"Trial by jury","umbrella":"Law & justice","year":"1992","w":[192,591,112,41,22]},{"id":4902,"topic":"Immigration","umbrella":"Politics & world affairs","year":"1992","w":[191,621,16,9,21]},{"id":4908,"topic":"Recycling","umbrella":"Science & environment","year":"1992","w":[90,698,32,12,13]},{"id":4928,"topic":"Exercise and fitness","umbrella":"Sports & outdoors","year":"1992","w":[258,648,76,26,26]},{"id":4936,"topic":"Woodworking","umbrella":"Home & hobbies","year":"1992","w":[230,599,40,52,41]}]}</script>
+<script>
+(function () {
+  "use strict";
+
+  var TYPES = [
+    { label: "Complete sentence, fluent", short: "Complete, fluent" },
+    { label: "Complete sentence, with a disfluency", short: "Complete, disfluent" },
+    { label: "Unfinished clause", short: "Unfinished" },
+    { label: "Fragment (no clause)", short: "Fragment" },
+    { label: "Response token (yeah, uh-huh)", short: "Response token" }
+  ];
+  var calls = JSON.parse(document.getElementById("topic-data").textContent).conversations;
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fmt = d3.format(","), fmt0 = d3.format(",.0f"), pct = d3.format(".0%");
+
+  // ---- 1. Roll the calls up: call -> topic -> umbrella ----
+  calls.forEach(function (c) { c.total = d3.sum(c.w); });
+  function summarize(name, items) {
+    var w = TYPES.map(function (_, t) { return d3.sum(items, function (c) { return c.w[t]; }); });
+    var total = d3.sum(w), n = items.length;
+    return {
+      name: name, n: n, total: total,
+      mean: total / n,                                           // average words per call
+      w: w.map(function (v) { return v / n; }),                  // average words per call, by type
+      share: w.map(function (v) { return v / total; })           // pooled share of words, by type
+    };
+  }
+  var umbrellas = d3.groups(calls, function (c) { return c.umbrella; }).map(function (entry) {
+    var u = summarize(entry[0], entry[1]);
+    u.topics = d3.groups(entry[1], function (c) { return c.topic; }).map(function (t) {
+      var s = summarize(t[0], t[1]);
+      s.calls = t[1].slice().sort(function (a, b) { return d3.descending(a.total, b.total); });
+      return s;
+    }).sort(function (a, b) { return d3.ascending(a.name.toLowerCase(), b.name.toLowerCase()); });
+    return u;
+  }).sort(function (a, b) { return d3.descending(a.share[0], b.share[0]); });
+  umbrellas.forEach(function (u, i) { u.id = "umbrella-" + i; });
+
+  // ---- 2. Legends ----
+  d3.selectAll(".legend").each(function () {
+    d3.select(this).selectAll("li").data(TYPES).join("li").each(function (d, t) {
+      var li = d3.select(this);
+      li.append("span").attr("class", "sw t" + t);
+      li.append("span").text(d.label);
+    });
+  });
+
+  // ---- 3. Stacking: turn five word counts into five rectangles, bottom to top ----
+  // y is a scale from words to pixels. A small surface gap separates the segments.
+  function segments(w, y, gap) {
+    var acc = 0, out = [];
+    w.forEach(function (v, t) {
+      if (v <= 0) return;
+      var y0 = y(acc), y1 = y(acc + v), h = y0 - y1;
+      var g = h >= gap + 2 ? gap : 0;
+      out.push({ t: t, y: y1 + g, h: Math.max(0.5, h - g), g: g });
+      acc += v;
+    });
+    if (out.length) { var top = out[out.length - 1]; top.y -= top.g; top.h += top.g; }
+    return out;
+  }
+
+  // ---- 4. Tooltip shared by both figures ----
+  var tip = document.getElementById("tip");
+  var activeCursor = null;
+  var lastPointer = "mouse";
+  function showTip(anchor, title, meta, item, cursor) {
+    hideTip();
+    if (cursor) { activeCursor = cursor.attr("visibility", "visible"); }
+    tip.textContent = "";
+    var head = tip.appendChild(document.createElement("div"));
+    head.className = "tip-title";
+    head.textContent = title;
+    var m = tip.appendChild(document.createElement("div"));
+    m.className = "tip-meta";
+    m.textContent = meta;
+    var rows = tip.appendChild(document.createElement("div"));
+    rows.className = "tip-rows";
+    var total = d3.sum(item.w);
+    TYPES.forEach(function (d, t) {
+      rows.appendChild(document.createElement("span")).className = "key t" + t;
+      var lab = rows.appendChild(document.createElement("span")); lab.className = "lab"; lab.textContent = d.short;
+      var p = rows.appendChild(document.createElement("span")); p.className = "pct"; p.textContent = pct(item.w[t] / total);
+      var w = rows.appendChild(document.createElement("span")); w.className = "wds"; w.textContent = fmt0(item.w[t]) + " words";
+    });
+    tip.hidden = false;
+    var tw = tip.offsetWidth, th = tip.offsetHeight, vw = document.documentElement.clientWidth;
+    var left = Math.max(12, Math.min(vw - tw - 12, anchor.x - tw / 2));
+    var top = anchor.top - th - 10;
+    if (top < 8) top = anchor.bottom + 10;
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+  function hideTip() {
+    if (activeCursor) activeCursor.attr("visibility", "hidden");
+    activeCursor = null;
+    tip.hidden = true;
+  }
+  document.addEventListener("pointerdown", function (event) {      // capture phase: runs before the bar handlers
+    lastPointer = event.pointerType || "mouse";
+    if (!event.target.closest || !event.target.closest("svg, .ov-labels")) hideTip();
+  }, true);
+  window.addEventListener("scroll", hideTip, { passive: true });
+
+  // ---- 5. Figure 1: one stacked bar per umbrella, height = average words per call ----
+  var OV = { h: 240, top: 22, bar: 24 };
+  var ovMax = Math.ceil(d3.max(umbrellas, function (u) { return u.mean; }) / 500) * 500;
+  var ovSvg = d3.select("#ov").attr("height", OV.h + OV.top + 1);
+  var labelBox = d3.select("#ov-labels").style("grid-template-columns", "repeat(" + umbrellas.length + ", minmax(0, 1fr))");
+  var buttons = labelBox.selectAll("button").data(umbrellas).join("button").attr("type", "button")
+    .attr("aria-label", function (u) {
+      return u.name + ": " + u.n + " calls, " + fmt0(u.mean) + " words on average, " + pct(u.share[0]) + " in fluent complete sentences. Jump to its calls.";
+    });
+  buttons.append("span").attr("class", "u-name").text(function (u) { return u.name; });
+  buttons.append("span").attr("class", "u-n").text(function (u) { return u.n + " calls"; });
+
+  function umbrellaMeta(u) { return u.n + " calls · " + fmt0(u.mean) + " words on average"; }
+  function jumpTo(u) {
+    hideTip();
+    document.getElementById(u.id).scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  function drawOverview() {
+    var width = Math.floor(document.getElementById("ov").getBoundingClientRect().width);
+    var x = d3.scaleBand().domain(umbrellas.map(function (u) { return u.name; })).range([0, width]);
+    var y = d3.scaleLinear().domain([0, ovMax]).range([OV.top + OV.h, OV.top]);
+    ovSvg.attr("viewBox", "0 0 " + width + " " + (OV.h + OV.top + 1));
+    ovSvg.selectAll("*").remove();
+
+    var ticks = d3.range(0, ovMax + 1, 500);
+    var grid = ovSvg.append("g");
+    grid.selectAll("line").data(ticks).join("line")
+      .attr("class", function (d) { return d === 0 ? "base" : "grid"; })
+      .attr("x1", 0).attr("x2", width)
+      .attr("y1", function (d) { return y(d) + 0.5; }).attr("y2", function (d) { return y(d) + 0.5; });
+    grid.selectAll("text").data(ticks).join("text")
+      .attr("x", -8).attr("y", function (d) { return y(d) + 4; }).attr("text-anchor", "end")
+      .text(function (d) { return fmt(d); });
+
+    var bars = ovSvg.append("g").selectAll("g").data(umbrellas).join("g")
+      .attr("transform", function (u) { return "translate(" + (x(u.name) + x.bandwidth() / 2 - OV.bar / 2) + ",0)"; });
+    bars.each(function (u, i) {                                   // rounded data end, square at the baseline
+      var yt = y(u.mean), yb = y(0), r = 4, w = OV.bar;
+      d3.select(this).append("clipPath").attr("id", "ov-clip-" + i).append("path")
+        .attr("d", "M0," + yb + "V" + (yt + r) + "Q0," + yt + " " + r + "," + yt + "H" + (w - r) + "Q" + w + "," + yt + " " + w + "," + (yt + r) + "V" + yb + "Z");
+    });
+    bars.append("g").attr("clip-path", function (u, i) { return "url(#ov-clip-" + i + ")"; })
+      .selectAll("rect").data(function (u) { return segments(u.w, y, 2); }).join("rect")
+      .attr("class", function (s) { return "t" + s.t; })
+      .attr("x", 0).attr("width", OV.bar)
+      .attr("y", function (s) { return s.y; }).attr("height", function (s) { return s.h; });
+    bars.append("text").attr("class", "cap").attr("x", OV.bar / 2).attr("text-anchor", "middle")
+      .attr("y", function (u) { return y(u.mean) - 7; }).text(function (u) { return fmt0(u.mean); });
+    bars.append("text").attr("x", OV.bar + 5)
+      .attr("y", function (u) { return y(u.w[0] / 2) + 4; }).text(function (u) { return pct(u.share[0]); });
+    var cursors = bars.append("rect").attr("class", "cursor").attr("visibility", "hidden").attr("rx", 5)
+      .attr("x", -2.5).attr("width", OV.bar + 5)
+      .attr("y", function (u) { return y(u.mean) - 2.5; })
+      .attr("height", function (u) { return y(0) - y(u.mean) + 3.5; });
+
+    function tipFor(u, i) {
+      var box = document.getElementById("ov").getBoundingClientRect();
+      var k = box.width / width;
+      showTip({ x: box.left + (x(u.name) + x.bandwidth() / 2) * k, top: box.top + y(u.mean) * k - 14, bottom: box.bottom },
+        u.name, umbrellaMeta(u), u, d3.select(cursors.nodes()[i]));
+    }
+    ovSvg.append("g").selectAll("rect").data(umbrellas).join("rect").attr("class", "slot")
+      .attr("x", function (u) { return x(u.name); }).attr("width", x.bandwidth())
+      .attr("y", 0).attr("height", OV.h + OV.top)
+      .on("pointermove pointerdown", function (event, u) { tipFor(u, umbrellas.indexOf(u)); })
+      .on("pointerleave", function (event) { if (event.pointerType === "mouse") hideTip(); })
+      .on("click", function (event, u) { if (lastPointer !== "touch") jumpTo(u); });   // on touch, a tap reads the bar
+    buttons.on("focus", function (event, u) { if (this.matches(":focus-visible")) tipFor(u, umbrellas.indexOf(u)); })
+      .on("blur", hideTip)
+      .on("click", function (event, u) { jumpTo(u); });
+  }
+
+  // ---- 6. Figure 2: for each umbrella, a tile per topic with one thin bar per call ----
+  // Every tile uses the same pixels-per-word, so heights compare across the whole figure.
+  // Each umbrella's tiles are only as tall as its longest call, which saves empty space.
+  var T = { top: 6, bar: 6, gap: 2, avgBar: 14, pxPerWord: 140 / 2750, mark: 1000 };
+  function tileScale(maxWords) {
+    var h = Math.ceil(maxWords * T.pxPerWord);
+    var y = d3.scaleLinear().domain([0, maxWords]).range([T.top + h, T.top]);
+    y.h = h;
+    return y;
+  }
+
+  var key = d3.select("#scale-key");
+  var keyH = T.mark * T.pxPerWord;
+  var keySvg = key.append("svg").attr("width", 9).attr("height", keyH).attr("aria-hidden", "true");
+  keySvg.append("line").attr("x1", 4.5).attr("x2", 4.5).attr("y1", 0.75).attr("y2", keyH - 0.75);
+  keySvg.append("line").attr("x1", 0).attr("x2", 9).attr("y1", 0.75).attr("y2", 0.75);
+  keySvg.append("line").attr("x1", 0).attr("x2", 9).attr("y1", keyH - 0.75).attr("y2", keyH - 0.75);
+  key.append("span").text("This height is " + fmt(T.mark) + " words. The faint line in each tile marks the same level.");
+
+  var sections = d3.select("#sections").selectAll("section").data(umbrellas).join("section")
+    .attr("class", "umb").attr("id", function (u) { return u.id; });
+  var heads = sections.append("header").attr("class", "umb-head");
+  heads.append("h3").text(function (u) { return u.name; });
+  heads.append("p").attr("class", "umb-meta").text(function (u) {
+    return u.n + " calls · " + u.topics.length + " topics · " + fmt0(u.mean) + " words on average";
+  });
+  var tileRows = sections.append("div").attr("class", "tiles");
+
+  // items: what each bar shows. describe(item) -> [title, meta] for the tooltip.
+  function tile(parent, yT, cls, name, countLabel, items, barW, describe) {
+    var width = items.length * (barW + T.gap) - T.gap;
+    var fig = parent.append("figure").attr("class", "tile " + cls).style("--w", width + "px");
+    var svg = fig.append("svg").attr("width", width).attr("height", yT.h + T.top + 2)
+      .attr("viewBox", "0 0 " + width + " " + (yT.h + T.top + 2))
+      .attr("tabindex", 0).attr("role", "img")
+      .attr("aria-label", name + ", " + countLabel + ". Use arrow keys to read each bar.");
+    svg.append("g").selectAll("line").data(yT.domain()[1] >= T.mark ? [T.mark] : []).join("line").attr("class", "grid")
+      .attr("x1", 0).attr("x2", width)
+      .attr("y1", function (d) { return yT(d) + 0.5; }).attr("y2", function (d) { return yT(d) + 0.5; });
+    svg.append("line").attr("class", "base").attr("x1", 0).attr("x2", width).attr("y1", yT(0) + 0.5).attr("y2", yT(0) + 0.5);
+    svg.append("g").selectAll("g").data(items).join("g")                       // the data join: one group per call
+      .attr("transform", function (d, i) { return "translate(" + i * (barW + T.gap) + ",0)"; })
+      .selectAll("rect").data(function (d) { return segments(d.w, yT, 1); }).join("rect")   // five rects per call
+      .attr("class", function (s) { return "t" + s.t; })
+      .attr("x", 0).attr("width", barW)
+      .attr("y", function (s) { return s.y; }).attr("height", function (s) { return s.h; });
+    var cursor = svg.append("rect").attr("class", "cursor").attr("visibility", "hidden").attr("rx", 2);
+    var cap = fig.append("figcaption");
+    cap.append("span").attr("class", "t-name").text(name);
+    cap.append("span").attr("class", "t-n").text(countLabel);
+
+    var current = 0;
+    function show(i) {
+      current = i;
+      var d = items[i], total = d3.sum(d.w), node = svg.node(), box = node.getBoundingClientRect();
+      cursor.attr("x", i * (barW + T.gap) - 1.5).attr("width", barW + 3)
+        .attr("y", yT(total) - 1.5).attr("height", yT(0) - yT(total) + 3);
+      var info = describe(d);
+      showTip({ x: box.left + i * (barW + T.gap) + barW / 2, top: box.top + yT(total), bottom: box.bottom }, info[0], info[1], d, cursor);
+    }
+    svg.on("pointermove pointerdown", function (event) {
+        var px = event.clientX - this.getBoundingClientRect().left;
+        show(Math.max(0, Math.min(items.length - 1, Math.floor(px / (barW + T.gap)))));
+      })
+      .on("pointerleave", function (event) { if (event.pointerType === "mouse") hideTip(); })
+      .on("focus", function () { if (this.matches(":focus-visible")) show(current); })
+      .on("blur", hideTip)
+      .on("keydown", function (event) {
+        var i = current;
+        if (event.key === "ArrowRight") i = Math.min(items.length - 1, i + 1);
+        else if (event.key === "ArrowLeft") i = Math.max(0, i - 1);
+        else if (event.key === "Home") i = 0;
+        else if (event.key === "End") i = items.length - 1;
+        else if (event.key === "Escape") { hideTip(); return; }
+        else return;
+        event.preventDefault();
+        show(i);
+      });
+  }
+
+  tileRows.each(function (u) {
+    var row = d3.select(this);
+    var yT = tileScale(d3.max(u.topics, function (t) { return t.calls[0].total; }));
+    tile(row, yT, "avg", "Average call", fmt0(u.mean) + " words", [u], T.avgBar, function () {
+      return [u.name, umbrellaMeta(u)];
+    });
+    u.topics.forEach(function (topic) {
+      tile(row, yT, "", topic.name, topic.n + (topic.n === 1 ? " call" : " calls"), topic.calls, T.bar, function (c) {
+        return [topic.name, "Call " + c.id + " · " + c.year + " · " + fmt(c.total) + " words"];
+      });
+    });
+  });
+
+  // ---- 7. Table twin: umbrellas with their topics ----
+  (function () {
+    var table = d3.select("#numbers");
+    table.append("caption").text("Calls, average words per call, and the pooled share of words by sentence type.");
+    var head = table.append("thead").append("tr");
+    head.append("th").attr("scope", "col").text("Umbrella and topic");
+    head.append("th").attr("scope", "col").text("Calls");
+    head.append("th").attr("scope", "col").text("Avg words");
+    TYPES.forEach(function (d, t) {
+      var th = head.append("th").attr("scope", "col");
+      th.append("span").attr("class", "sw t" + t);
+      th.append("span").text(d.short);
+    });
+    function fill(tr, s) {
+      tr.append("th").attr("scope", "row").text(s.name);
+      tr.append("td").text(s.n);
+      tr.append("td").text(fmt0(s.mean));
+      s.share.forEach(function (v) { tr.append("td").text(pct(v)); });
+    }
+    umbrellas.forEach(function (u) {
+      var body = table.append("tbody");
+      fill(body.append("tr").attr("class", "umb-row"), u);
+      u.topics.forEach(function (topic) { fill(body.append("tr"), topic); });
+    });
+  })();
+
+  // ---- 8. First draw, and redraw figure 1 when its width changes ----
+  drawOverview();
+  var lastWidth = document.getElementById("ov").getBoundingClientRect().width;
+  new ResizeObserver(function () {
+    var w = document.getElementById("ov").getBoundingClientRect().width;
+    if (Math.abs(w - lastWidth) > 0.5) { lastWidth = w; drawOverview(); }
+  }).observe(document.getElementById("ov"));
+})();
+</script>

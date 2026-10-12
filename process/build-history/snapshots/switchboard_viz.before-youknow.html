@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Switchboard Calls</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=Manrope:wght@300;600&display=swap">
+<style>
+  /* One full-screen stage. The page is white or black by design: sentences that are complete
+     but carry a disfluency are always drawn in the opposite of the background, and zooming
+     into that segment flips the page. */
+  :root {
+    --paper: #f8f7f3;
+    --ink: #0c0c0c;
+    --muted: #5d5c58;
+    --fluent: #2a78d6;
+    --unfinished: #eb6834;
+    --fragment: #1baf7a;
+    --response: #c3c2b7;
+    /* the kinds of disfluent word, used only by the strip beside a focused bar */
+    --replaced: #b3306b;
+    --editing: #e87ba4;
+    --cutoff: #eda100;
+    --uh: #6250d6;
+    --um: #a59bee;
+    /* two type roles: headers are tracked capitals; labels on the bars are a light sans */
+    --header-font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --label-font: "Manrope", "IBM Plex Sans", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--paper); color: var(--ink); overflow: hidden;
+         font: 14px/1.45 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  /* On the black screen the two page colors trade places, so everything drawn in "ink" turns
+     white by itself. The hues are stepped for the dark background. */
+  body.black { --paper: #0c0c0c; --ink: #f8f7f3; --muted: #a3a29a;
+               --fluent: #3987e5; --unfinished: #d95926; --fragment: #199e70; --response: #6f6e68;
+               --replaced: #e0558a; --editing: #f3a3c0; --uh: #9085e9; --um: #c2bbf5; }
+
+  #stage, #wave { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* marks */
+  .seg.t0 { fill: var(--fluent); }
+  .seg.t1 { fill: var(--ink); }
+  .seg.t2 { fill: var(--unfinished); }
+  .seg.t3 { fill: var(--fragment); }
+  .seg.t4 { fill: var(--response); }
+  .kind.k0 { fill: var(--replaced); }
+  .kind.k1 { fill: var(--editing); }
+  .kind.k2 { fill: var(--cutoff); }
+  .kind.k3 { fill: var(--uh); }
+  .kind.k4 { fill: var(--um); }
+  .track { fill: var(--ink); opacity: 0.07; }
+  .cord { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
+  .receiver { cursor: pointer; }
+  /* the receiver drawing has two tones: ink, and "light" highlights in the paper color */
+  #receiver-art path, #receiver-art polygon, #receiver-art circle, #receiver-art rect { fill: var(--ink); }
+  #receiver-art .light { fill: var(--paper); }
+  .receiver .tail { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+  .receiver text { fill: var(--ink); text-anchor: middle; pointer-events: none; }
+  /* every header on the page shares this look */
+  .header { font-family: var(--header-font); font-weight: 600; text-transform: uppercase; letter-spacing: 0.115em; }
+  .receiver .line1 { font-size: 13px; }
+  .receiver .line2 { font-size: 12px; fill: var(--muted); }
+  .receiver:focus { outline: none; }
+  .receiver:focus-visible .hit { stroke: var(--fluent); stroke-width: 2; stroke-dasharray: 5 4; }
+
+  .bar { cursor: pointer; transition: opacity 0.45s; }
+  .bar:focus { outline: none; }
+  .bar:focus-visible .hit { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+  .hit { fill: transparent; }
+  .name, .value, .detail text { font-family: var(--label-font); font-weight: 300; }
+  .name { font-size: 13.5px; fill: var(--ink); }
+  .value { font-size: 11.5px; fill: var(--ink); text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .name, .value { transition: opacity 0.5s; }
+  .detail { opacity: 0; transition: opacity 0.35s; pointer-events: none; }
+  .detail line { stroke: var(--muted); }
+  .detail text { fill: var(--ink); }
+  .detail .pct { fill: var(--ink); font-weight: 600; }
+  .detail text.header { font-family: var(--header-font); font-weight: 600; }
+  /* the cue beside a bar in focus: a thin bracket with a line of text across its middle, saying
+     what a second click does. The text has an outline in the page color, which breaks the bracket behind it. */
+  .cue path { fill: none; stroke: var(--ink); }
+  .cue text { font-family: var(--label-font); font-weight: 300; fill: var(--ink); text-transform: uppercase; letter-spacing: 0.16em;
+              text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: var(--paper); stroke-linejoin: round; }
+  .wdetail .cue path { stroke-width: 1; }
+  .wdetail .cue text { font-size: 9.5px; stroke-width: 7px; }
+  .cord, .receiver { transition: opacity 0.45s; }
+
+  /* states, set as classes on the world group */
+  #world.pre .bar, #world.pre .cord { visibility: hidden; }
+  #world.pre .name, #world.pre .value, #world.growing .name, #world.growing .value { opacity: 0; }
+  #world.has-focus .bar:not(.is-focused), #world.has-focus .cord:not(.is-focused), #world.has-focus .receiver { opacity: 0.14; }
+  #world.has-focus .bar.is-covered { opacity: 0; pointer-events: none; }
+  #world.has-focus .bar:not(.is-focused) .value { opacity: 0; }
+  #world.has-focus .bar.is-focused .detail { opacity: 1; }
+  #world.has-focus.no-name .bar.is-focused .name { opacity: 0; }
+  #world.zooming .name, #world.zooming .value, #world.zooming .detail { opacity: 0 !important; }
+  @media (max-width: 620px) { .name { font-size: 11.5px; } .value { font-size: 10px; } }
+
+  /* the waveform screen */
+  .midline { stroke: var(--muted); stroke-width: 1; opacity: 0.55; }
+  .wbar { cursor: pointer; transition: opacity 0.4s; }
+  .wbar:focus { outline: none; }
+  .wbar:focus-visible .hit { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
+  .wvalue, .topic { font-family: var(--label-font); font-weight: 300; fill: var(--ink); }
+  .wvalue { font-size: 10.5px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .topic { font-size: 11.5px; fill: var(--ink); fill-opacity: 0.8; pointer-events: none; }
+  .wvalue, .topic, .wdetail, .midline { transition: opacity 0.4s; }
+  .wdetail { opacity: 0; pointer-events: none; }
+  .wdetail line { stroke: var(--muted); }
+  #wave-world:not(.has-focus):not(.zooming):has(.wbar:hover) .wbar:not(:hover) { opacity: 0.72; }   /* pointing at a call sets it apart */
+  #wave-world.has-focus .wbar:not(.is-focused) { opacity: 0.3; }
+  #wave-world.has-focus .wbar.is-covered { opacity: 0; pointer-events: none; }
+  #wave-world.has-focus .wdetail { opacity: 1; }
+  #wave-world.zooming .wvalue, #wave-world.zooming .topic, #wave-world.zooming .wdetail, #wave-world.zooming .midline { opacity: 0 !important; }
+
+  /* the lines of talk beside a call in focus: ordinary HTML laid over the drawing, so long lines can wrap */
+  #lines { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
+  #lines.shown { opacity: 1; }
+  #lines p { position: absolute; margin: 0; width: max-content; box-sizing: border-box; padding-left: 3.3em; text-indent: -3.3em;
+             font: 300 13.5px/1.35 var(--label-font); color: var(--ink); }
+  #lines .pct { display: inline-block; width: 2.8em; margin-right: 0.5em; text-indent: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #lines .count { color: var(--muted); margin-left: 0.6em; }
+  .w-rp { color: var(--replaced); }
+  .w-et { color: var(--editing); }
+  .w-fr { color: var(--cutoff); }
+  .w-uh { color: var(--uh); }
+  .w-um { color: var(--um); }
+  #hud #word-key { display: none; margin: 9px 0 0; font: 300 12.5px/1.35 var(--label-font); color: var(--muted); }
+  body.black #hud #word-key { display: block; visibility: hidden; }
+  body.black #hud.with-lines #word-key { visibility: visible; }
+  /* on the white single-call screen the key's words sit on small dark chips, so the light colors stay readable */
+  #hud.on-call #word-key { display: block; --replaced: #e0558a; --editing: #f3a3c0; --uh: #9085e9; --um: #c2bbf5; }
+  #hud.on-call #word-key span { padding: 1px 5px 2px; border-radius: 3px; background: var(--ink); }
+
+  /* text laid over the stage */
+  #hud { position: fixed; top: 22px; left: clamp(20px, 7vw, 90px); right: 64px; max-width: 36rem;
+         pointer-events: none; transition: opacity 0.6s; }
+  #hud.faded { opacity: 0; }
+  #hud h1 { margin: 0 0 6px; font-size: 15px; line-height: 1.3; }
+  #hud p { margin: 0 0 10px; color: var(--muted); }
+  #legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+  #legend li { display: flex; align-items: center; gap: 6px; }
+  #legend i { width: 10px; height: 10px; flex: none; }
+  #hint { position: fixed; left: 0; right: 0; margin: 0; text-align: center; color: var(--muted);
+          pointer-events: none; transition: opacity 0.4s; }
+  #hint.faded { opacity: 0; }
+  /* the single-call screen */
+  #call { position: fixed; inset: 0; cursor: pointer; }
+  #call-svg { display: block; width: 100%; height: 100%; }
+  #call-note { position: absolute; left: clamp(20px, 7vw, 90px); right: 20px; max-width: 34rem; margin: 0; color: var(--muted); }
+  .piece { transition: opacity 0.2s; }
+  .piece.untyped { fill: var(--paper); stroke: var(--muted); stroke-width: 1; }
+  .wait { fill: none; stroke: var(--ink); stroke-width: 0.9; stroke-linecap: round; opacity: 0.8; }
+  .lane-name { font: 600 9.5px var(--header-font); fill: var(--muted); text-anchor: end; dominant-baseline: central; }
+  .end-mark line { stroke: var(--muted); stroke-width: 1; }
+  .end-mark text { font: 600 8.5px var(--header-font); letter-spacing: 0.1em; text-transform: uppercase; fill: var(--muted); }
+  #call-svg.pointing .piece:not(.on) { opacity: 0.28; }
+  /* the bubble that shows one utterance. It is dark on the white page, so the words keep the colors they have on the black screen. */
+  #say { position: fixed; z-index: 8; box-sizing: border-box; width: max-content; max-width: min(27rem, calc(100vw - 24px)); padding: 9px 12px 10px;
+         border-radius: 4px; background: var(--ink); color: var(--paper); pointer-events: none;
+         font: 300 13.5px/1.4 var(--label-font); --replaced: #e0558a; --editing: #f3a3c0; --uh: #9085e9; --um: #c2bbf5; }
+  #say .who { margin: 0 0 4px; font: 600 9.5px/1.3 var(--header-font); letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
+  #say p { margin: 0; }
+  /* the "i" button in the corner and the panel it opens */
+  #info-button { position: fixed; top: 16px; right: 18px; z-index: 12; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+                 border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer;
+                 font: italic 600 16px/1 Georgia, "Times New Roman", serif; }
+  #info-button[aria-expanded="true"] { font: 400 18px/1 var(--header-font); }
+  #info-button:focus-visible { outline: 2px solid var(--fluent); outline-offset: 2px; }
+  #info-backdrop { position: fixed; inset: 0; z-index: 10; }
+  #info { position: fixed; top: 0; right: 0; bottom: 0; z-index: 11; box-sizing: border-box; width: min(29rem, 100vw);
+          padding: 22px 22px 28px; overflow-y: auto; background: var(--paper); color: var(--ink);
+          border-left: 1px solid var(--ink); font-size: 13.5px; line-height: 1.5; }
+  #info h2 { margin: 0 44px 10px 0; font-size: 15px; line-height: 1.3; }
+  #info h3 { margin: 22px 0 6px; font-size: 11px; color: var(--muted); }
+  #info p { margin: 0 0 10px; }
+  #info ul { margin: 0 0 10px; padding-left: 1.1em; }
+  #info li { margin-bottom: 4px; }
+  #info details { border-top: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+  #info details:last-of-type { border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+  #info summary { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; cursor: pointer; list-style: none; }
+  #info summary::-webkit-details-marker { display: none; }
+  #info summary::after { content: "+"; flex: none; color: var(--muted); }
+  #info details[open] summary::after { content: "\2212"; }
+  #info summary b { font-weight: 600; }
+  #info summary span { display: block; color: var(--muted); }
+  #info table { width: 100%; margin: 0 0 10px; border-collapse: collapse; font-size: 12.5px; }
+  #info th, #info td { padding: 5px 10px 5px 0; text-align: left; vertical-align: top;
+                       border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+  #info th { font-weight: 600; white-space: nowrap; }
+  #info code { font-size: 12px; }
+  #info .note { color: var(--muted); }
+
+  #loader { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(30rem, calc(100vw - 48px));
+            padding: 14px 16px; border: 1px solid var(--response); border-radius: 6px; background: var(--paper); }
+  #loader p { margin: 0 0 8px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- The receiver drawing (Asset_1.svg), kept inside the page so everything stays in one file.
+     It is drawn upright, 232.68 wide and 673.75 tall. To change the drawing, replace what is
+     inside this group; shapes with class "light" take the paper color, everything else is ink. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="receiver-art">
+      <g>
+      <path class="light" d="M149.71,244.6s-.03.03-.1.07c-.1.06-.21.11-.3.18-.14.08-.3.19-.51.3-22.69,14.28-34.89,50.96-39,119.36-4.16,69.32-7.92,97.71,4.53,116.26l-92.75,37.85c-2.97-96.81,20.74-243.07,35.81-308.92l92.32,34.89Z"/>
+      <path d="M57.39,209.71c-15.07,65.85-38.78,212.11-35.81,308.92,3.51-15.71,22.36-29.1,22.36-29.1,0,0,1.27-54.53,1.72-81.14-2.21,1.55-5.64,8.23-5.64,8.23.92-7.51,5.77-16.65,5.77-16.65.95-1.07,1.8-2.21,2.69-3.33,1.17-1.45,2.45-2.84,3.81-4.16,2.71-2.67,5.75-5.12,8.76-7.63-3.58,1.58-7.11,3.3-10.48,5.45-1.61,1.04-3.17,2.19-4.67,3.44.38-18,1.49-34.21,2.74-45,1.32-11.39,8.46-48.14,17.23-82.77,1.02-4.03,3.79-7.42,7.57-9.17,3.66-1.69,8.27-3.08,12.8-3.54,1.5-.15,2.83-.2,4.02-.18,2.18.04,3.56,2.35,2.57,4.29-.32.62-.63,1.23-.94,1.83-5.47,10.59-10.64,20.58-16,68.77-3.64,32.7-5.84,56.38-7.29,72.04-1.08,11.61-1.71,18.98-2.36,23.52l20.53,36.6-16.3-37.21c.61-4.74,1.29-12.03,2.26-22.53,1.45-15.65,3.65-39.31,7.29-71.97,5.27-47.41,10.27-57.08,15.56-67.32.99-1.91,5.95-9.76,8.91-12.25,26.63,4.74,40.76-1.73,44.31-3.72.21-.11.37-.22.51-.3.1-.07.21-.12.3-.18.07-.04.1-.07.1-.07l-92.32-34.89Z"/>
+      <path class="light" d="M58.04,223.46c-1.81,11.69-3.83,23.33-5.54,35.02-.93,5.83-1.83,11.67-2.7,17.51l-2.64,17.52c-1.7,11.69-3.47,23.36-5.05,35.07-.82,5.85-1.65,11.69-2.42,17.54-.8,5.85-1.58,11.7-2.29,17.56-1.57,11.7-2.96,23.43-4.31,35.15-.65,5.87-1.39,11.72-1.98,17.6l-1.82,17.61-1.64,17.63-1.45,17.65-1.24,17.67c-.28,5.9-.58,11.8-.93,17.71-.58-23.65.29-47.34,2.03-70.94.84-11.8,1.93-23.59,3.12-35.36.55-5.89,1.3-11.76,1.96-17.64.65-5.88,1.4-11.75,2.14-17.62,3.07-23.46,6.59-46.86,10.69-70.16,4.06-23.3,8.71-46.51,14.08-69.54Z"/>
+      <path d="M18.94,522.71l-.12-3.99c-2.85-92.97,19.26-237.03,35.88-309.62l.71-3.1,99.36,37.56-3.34,3.26-.69.43c-.21.13-.36.22-.53.32-22,13.91-33.61,50.04-37.64,117.14-.52,8.64-1.03,16.64-1.51,24.07-3.3,51.51-4.8,75.02,5.57,90.48l1.9,2.83-99.6,40.64ZM59.4,213.43c-16.22,72.18-37.21,209.87-35.14,301.12l86.01-35.1c-9.48-16.88-7.93-41.15-4.73-91.04.47-7.42.99-15.42,1.5-24.05,3.93-65.56,15.31-102.66,36.7-119.05l-84.34-31.88Z"/>
+      <g>
+      <g>
+      <path class="light" d="M229.91,150.33c0,36.24-20.37,67.76-50.38,83.99-13.75,7.44-29.54,11.67-46.32,11.67-53.42,0-96.7-42.82-96.7-95.66,0-7.81.94-15.39,2.72-22.64.78-3.16,1.72-6.27,2.8-9.29.01-.06.04-.12.07-.18,13.32-37.04,49.08-63.55,91.11-63.55,53.4,0,96.7,42.82,96.7,95.66Z"/>
+      <path d="M133.21,248.76c-54.85,0-99.47-44.16-99.47-98.43,0-7.88.94-15.72,2.8-23.3.78-3.17,1.74-6.36,2.85-9.48.04-.14.09-.27.14-.38,14.1-39.05,51.73-65.27,93.68-65.27,54.85,0,99.47,44.16,99.47,98.43,0,36.03-19.86,69.15-51.83,86.42-14.51,7.85-30.98,12.01-47.64,12.01ZM44.64,119.36c-1.06,2.97-1.98,6-2.71,9-1.75,7.15-2.64,14.54-2.64,21.98,0,51.22,42.13,92.89,93.93,92.89,15.74,0,31.3-3.92,45-11.34,30.18-16.31,48.93-47.56,48.93-81.55,0-51.22-42.13-92.89-93.93-92.89-39.66,0-75.23,24.8-88.5,61.72l-.07.19Z"/>
+      </g>
+      <g>
+      <path d="M162.09,139.36c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M163.63,118.97c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M159.23,102.34c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M142.59,106.74c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M128.81,115.53c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M118.41,127.01c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <circle cx="109.62" cy="143.76" r="4.4"/>
+      <path d="M114.02,160.51c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M120.02,177.25c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M130.76,190.44c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M146.99,199.24c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M167.22,201.66c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M183.38,194.84c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <circle cx="191.29" cy="181.65" r="4.4"/>
+      <path d="M201.93,166.51c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M206.32,150.33c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M203.55,135.81c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M197.53,121.78c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M188.73,111.13c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M176.02,104.72c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M146.99,122.61c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M133.21,134.97c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M129.74,152.94c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M133.21,168.72c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M143.92,180.33c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M159.23,186.05c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M176.02,180.33c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M185.46,168.2c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M189.86,153.32c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M187.78,138.04c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M178.99,126.17c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M149.35,143.76c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M160.7,152.94c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M148.31,157.71c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M159.23,166.51c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M171.62,159.92c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M173.53,146.84c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      </g>
+      <path d="M162.09,139.36c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M149.35,143.76c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M160.7,152.94c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M148.31,157.71c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M159.23,166.51c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M171.62,159.92c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M173.53,146.84c0,2.43-1.97,4.4-4.4,4.4s-4.4-1.97-4.4-4.4,1.97-4.4,4.4-4.4,4.4,1.97,4.4,4.4Z"/>
+      <path d="M102.87,89.68c-4.16,5.27-8.43,10.4-12.26,15.75-1.91,2.68-3.72,5.4-5.39,8.18-1.63,2.8-3.16,5.65-4.46,8.58-2.6,5.87-4.47,12.03-5.5,18.38-1.04,6.35-1.43,12.83-1.38,19.34.06,3.3.15,6.43.56,9.56.42,3.12,1.02,6.23,1.89,9.27.88,3.04,1.97,6.03,3.22,8.97,1.29,2.92,2.78,5.76,4.43,8.52,3.31,5.52,7.34,10.61,11.58,15.58,2.14,2.46,4.38,4.87,6.69,7.22,1.17,1.17,2.34,2.34,3.56,3.46,1.22,1.12,2.42,2.29,3.81,3.23-1.67-.38-3.2-1.19-4.72-1.95-1.49-.81-2.98-1.65-4.39-2.61-2.86-1.85-5.55-3.96-8.11-6.22-5.14-4.51-9.6-9.81-13.37-15.59-3.79-5.76-6.95-12.04-8.98-18.75-1.06-3.34-1.75-6.8-2.23-10.27-.52-3.49-.52-7.04-.53-10.4.06-6.82.52-13.7,1.94-20.47,1.39-6.75,3.54-13.43,6.74-19.57,1.58-3.07,3.38-6.03,5.4-8.8,1.99-2.8,4.18-5.42,6.49-7.9,4.62-4.97,9.67-9.42,15.01-13.5Z"/>
+      <path d="M85.08,186.05c2.49,4.93,4.86,9.85,7.62,14.46,1.35,2.31,2.81,4.55,4.4,6.66.85,1.01,1.57,2.12,2.44,3.1.88.97,1.69,2.01,2.62,2.93,7.18,7.61,16.54,12.85,26.58,16.21,1.24.47,2.55.76,3.82,1.12,1.29.33,2.56.74,3.85,1.01,2.6.48,5.16,1.15,7.79,1.38,5.22.75,10.49.88,15.72.59,5.25-.15,10.45-1.02,15.6-2.17,1.28-.31,2.6-.54,3.87-.92,1.3-.31,2.6-.64,3.88-1.03,2.6-.72,5.21-1.49,7.85-2.45-3.87,4.14-8.91,7.06-14.18,9.12-5.31,2.04-10.96,3.08-16.63,3.64-5.68.38-11.43.28-17.01-.77-2.82-.35-5.55-1.15-8.31-1.75-1.37-.33-2.7-.8-4.05-1.2-1.34-.43-2.7-.78-4.01-1.32-5.31-1.9-10.42-4.43-15.21-7.45-4.81-3.02-9.07-6.91-12.67-11.25-3.62-4.34-6.46-9.22-8.69-14.29-2.25-5.07-3.93-10.31-5.32-15.62Z"/>
+      <path d="M179.53,234.32c-13.75,7.44-29.54,11.67-46.32,11.67-53.42,0-96.7-42.82-96.7-95.66,0-7.81.94-15.39,2.72-22.64l2.8-9.29.06-.18h.01l2.3,1.37c-5.07,11.67-5.19,33.24-.46,45.31-6.7-62.57,36.85-82.4,42.98-76.04,3.17,3.29,3.58,9.93,1.66,16.23,0,0-13.45,15.87-17.84,47.83-4.38,31.94,19.35,56.77,19.35,56.77,0,0,6.38,6.09,31.87,20.13,25.49,14.03,57.02,2.97,57.02,2.97l.54,1.51Z"/>
+      <path class="light" d="M77.22,223.46c4.91,3.39,10,6.35,15.29,8.88,5.3,2.51,10.77,4.63,16.38,6.29,5.6,1.71,11.34,2.97,17.13,3.93,5.81.95,11.68,1.55,17.62,2.03-5.92.68-11.93.68-17.9.12-5.97-.54-11.89-1.71-17.66-3.42-5.75-1.76-11.35-4.06-16.58-7.04-5.23-2.95-10.13-6.53-14.29-10.8Z"/>
+      <path class="light" d="M48.8,186.05c2.34-1.49,12.04,18.27,16.9,22.77-6.89-5.68-10.68-10.11-13.69-14.38-2.17-3.08-4.59-7.51-3.21-8.39Z"/>
+      <path d="M99.4,85.87c3.03-3.85,7.53-6.56,12.38-7.74,2.42-.6,4.91-.81,7.36-.74,2.45.07,4.84.44,7.23,1.03-2.4.57-4.79.81-7.11,1.13-2.32.33-4.59.73-6.82,1.27-2.22.55-4.41,1.21-6.55,2.1-2.15.87-4.25,1.91-6.48,2.95Z"/>
+      <polygon points="162.09 91.76 198.34 77.72 199.97 83.02 162.09 91.76"/>
+      <path d="M178.99,97.94c1.65-1.07,3.51-1.81,5.42-2.32,1.91-.52,3.87-.77,5.83-.94,3.92-.25,7.87-.04,11.69.89l-5.83.19c-1.93.08-3.85.14-5.76.29-3.83.28-7.6.75-11.35,1.88Z"/>
+      <path d="M130.76,71.77c6-2.52,12.36-4.29,18.88-5.23,6.51-.93,13.17-1.15,19.8-.46,6.62.7,13.23,2.27,19.48,4.93,6.25,2.62,12.17,6.53,16.66,11.78l-4.06,3.78c-4.38-4.27-9.3-7.97-14.8-10.87-5.51-2.87-11.57-4.83-17.8-5.98-6.24-1.15-12.66-1.58-19.08-1.22-6.41.35-12.85,1.36-19.07,3.27Z"/>
+      <path d="M71.5,84.69c14.27-11.44,28.15-24.47,50.47-27.59,0,0,15.41-.23,14.52,4.97s-12.21,3.18-28.46,6.47c-16.25,3.29-29.82,11.99-36.52,16.15Z"/>
+      </g>
+      <g>
+      <polygon points="108.38 3.55 108.02 63.86 133.8 60.57 126.36 1.82 108.38 3.55"/>
+      <path class="light" d="M111.45,35.35s9.47-.78,9.5-2.51c.17-7.92-1.23-18.17-1.97-24-.32-2.56-3.12-4.51-3.12-4.51,1.55-.2,7.12-3.37,9.7,0,1.38,1.8,1.46,9.53,1.91,13.43,1.11,9.76,1.55,15.18,1.55,15.18l3,24.41-5.02.33s-2.41-5.84-2.43-11.9c-.03-9.59-13.14-10.43-13.14-10.43Z"/>
+      <rect x="108.81" y="32.32" width="21.52" height="2.77" transform="translate(-2.32 9.68) rotate(-4.59)"/>
+      <path d="M105.93,66.22l.35-60.03c.01-2.58,1.96-4.71,4.53-4.96L123.33.02c2.71-.26,5.11,1.65,5.45,4.36l7.34,57.98-30.19,3.86ZM123.81,4.16s-.06,0-.08,0l-12.52,1.21c-.44.04-.77.41-.77.84h0s-.32,55.28-.32,55.28l21.36-2.73-6.82-53.86c-.05-.43-.42-.75-.84-.75Z"/>
+      </g>
+      <path d="M146.06,247.04c-24.71,4.73-45.04,9.81-47.81,19.28s5.83,17.58,25.67,13.64c0,0,4.64-15.99,11.2-21.75,6.56-5.76,10.94-11.18,10.94-11.18Z"/>
+      <path class="light" d="M52.44,347.49c2.44-3.53,5.65-6.44,9.01-9.05,3.36-2.64,7-4.83,10.72-6.86,3.73-2.01,7.59-3.75,11.55-5.22,3.95-1.48,8-2.75,12.22-3.48-3.57,2.34-7.2,4.42-10.86,6.43-3.63,2.05-7.31,3.97-10.95,5.94-3.64,1.96-7.3,3.88-10.9,5.89-3.6,2.03-7.17,4.08-10.79,6.35Z"/>
+      <path d="M70.89,483.72c-.58-3.88-1.09-7.72-1.57-11.58-.48-3.86-.9-7.72-1.27-11.59-.37-3.87-.68-7.74-.86-11.62-.18-3.88-.29-7.77-.03-11.63.3,3.85.97,7.65,1.7,11.43.74,3.77,1.6,7.53,2.52,11.26.91,3.74,1.89,7.46,2.91,11.17,1.02,3.7,2.08,7.42,3.19,11.06l-6.6,1.5Z"/>
+      <g>
+      <g>
+      <path class="light" d="M196.17,575.32c0,52.83-43.3,95.66-96.7,95.66S2.77,628.15,2.77,575.32s43.3-95.66,96.7-95.66c7.57,0,14.94.86,22.02,2.5,18.85,4.34,35.59,14.14,48.4,27.62,16.3,17.12,26.29,40.19,26.29,65.55Z"/>
+      <path d="M99.47,673.75c-54.85,0-99.47-44.16-99.47-98.43s44.62-98.43,99.47-98.43c7.66,0,15.28.86,22.64,2.57,19.07,4.39,36.29,14.21,49.78,28.41,17.44,18.32,27.05,42.27,27.05,67.46,0,54.27-44.62,98.43-99.47,98.43ZM99.47,482.43c-51.79,0-93.93,41.67-93.93,92.89s42.13,92.89,93.93,92.89,93.93-41.67,93.93-92.89c0-23.75-9.06-46.35-25.52-63.63-12.74-13.4-29-22.68-47.01-26.83-6.96-1.61-14.15-2.42-21.39-2.42Z"/>
+      </g>
+      <g>
+      <path d="M110.57,545.28c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31-.95-2.23.08-4.82,2.31-5.77,2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M100.59,554.33c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31s.08-4.82,2.31-5.77c2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M114.63,558.3c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31-.95-2.23.08-4.82,2.31-5.77,2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M105.12,567.56c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31-.95-2.23.08-4.82,2.31-5.77,2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M118.62,571.36c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31-.95-2.23.08-4.82,2.31-5.77,2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M127.42,560.43c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31-.95-2.23.08-4.82,2.31-5.77,2.23-.95,4.82.08,5.77,2.31Z"/>
+      <path d="M124.03,547.65c.95,2.23-.08,4.82-2.31,5.77-2.23.95-4.82-.08-5.77-2.31s.08-4.82,2.31-5.77c2.23-.95,4.82.08,5.77,2.31Z"/>
+      </g>
+      <path d="M124.38,501.08c7.05,1.14,13.95,3.58,20.33,7.12,6.34,3.6,12.14,8.37,16.76,14.2,4.69,5.78,8.14,12.58,10.23,19.75,2.11,7.18,2.84,14.69,2.55,22.1-.4,7.37-1.78,14.77-4.47,21.77-2.69,6.98-6.8,13.5-12.18,18.7-5.31,5.27-11.75,9.2-18.54,11.86-6.82,2.6-14.05,3.9-21.18,3.95,6.96-1.54,13.7-3.68,19.81-6.98,6.12-3.22,11.62-7.43,16.08-12.47,4.43-5.07,7.81-10.95,9.99-17.3.26-.8.62-1.56.82-2.37l.64-2.44.64-2.44c.2-.82.29-1.67.44-2.5l.42-2.5c.14-.83.31-1.66.34-2.52l.42-5.08c.28-6.78-.29-13.56-1.96-20.07-1.65-6.52-4.46-12.72-8.28-18.31-3.86-5.56-8.72-10.51-14.33-14.57-5.58-4.13-11.89-7.33-18.54-9.9Z"/>
+      <path d="M166,535.38s-19.05,8.21-21.57,36.4c-2.52,28.19,5.28,36.57,5.28,36.57h0c21.45-17.64,28.2-47.58,16.41-72.72l-.12-.25Z"/>
+      <path class="light" d="M143.93,521.76v-2.08l-.07-2.08c.77-.04,12.99-1.19,21.02-1.96l.4,4.14c-9.45.9-20.83,1.97-21.34,1.97Z"/>
+      <path d="M141.68,518.64c1.21-1.75,2.98-2.97,4.82-3.87,1.86-.89,3.85-1.46,5.89-1.72,2.04-.26,4.14-.19,6.18.3,2.02.49,4.05,1.39,5.47,2.99-2.11,0-3.92.11-5.75.27-1.81.15-3.6.35-5.39.57l-11.21,1.47Z"/>
+      <path d="M117.89,520.66c.42-1.15,1.24-2.13,2.16-2.92.92-.81,1.99-1.44,3.09-1.96,1.11-.49,2.28-.88,3.48-1.07,1.19-.19,2.47-.26,3.63.17-1.19.16-2.27.51-3.36.88-1.08.39-2.14.8-3.17,1.28-1.04.46-2.04.99-3.02,1.57-.97.59-1.91,1.24-2.8,2.06Z"/>
+      <path d="M81.38,506.16c.85-.63,1.94-.99,3.06-1.01,1.12,0,2.21.3,3.2.75.99.48,1.87,1.12,2.63,1.86.76.75,1.43,1.58,1.87,2.56l-2.55-1.72c-.84-.53-1.67-1.06-2.55-1.45-.87-.42-1.76-.72-2.69-.93-.94-.17-1.9-.16-2.98-.06Z"/>
+      <path d="M25.04,637.44c-4.23-4.95-7.95-10.32-11.07-15.97l1.2-.7c.52.84,5.22,8.46,10.95,15.8l-1.07.88Z"/>
+      <path d="M169.88,509.77c-2.33.12-3.45.46-2.81,1.1,4.08,4.08,26.6,28.1,21.29,65.53-5.32,37.43-37.67,65.16-81.84,63.77-44.17-1.39-87.01-41.88-71.76-100.97,15.25-59.09,71.22-57.37,86.29-54.41l.43-2.63c-7.07-1.64-14.45-2.5-22.02-2.5-19.09,0-36.9,5.48-51.89,14.93l1.91,1.64c-16.64,7.62-46.72,55.16-40.8,112.11h0c1.62,4.37,3.56,8.57,5.78,12.61-5.38-11.67-3.32-35.44,3.25-50.09,1.5,10.05,8.09,19.99,9.94,26.8s10.98,32.93,15.6,41.13c4.61,8.19,5.52,15.76-4.12,11.27,8.78,6.95,18.83,12.4,29.72,16,15.87,1.21,34.73-.18,56.01-7.45,21.32-7.28,37.43-17.5,37.43-17.5,0,0-21.98,25.17-58.3,29.76,51.3-2.34,92.16-44.22,92.16-95.54,0-25.36-9.98-48.43-26.29-65.55Z"/>
+      <path d="M51.4,583.34c-2-6.3-2.77-12.99-2.67-19.65.09-6.67,1.15-13.34,3.08-19.76,1.99-6.4,4.88-12.58,8.91-17.97,3.99-5.39,9.15-9.99,15.11-12.86-5.2,4.07-9.52,8.94-12.94,14.36-3.41,5.43-6.01,11.33-7.86,17.47-1.9,6.12-3.06,12.49-3.68,18.91-.59,6.44-.58,12.94.05,19.51Z"/>
+      </g>
+      <path d="M52.44,344.77c2.63-3.32,5.9-6.09,9.31-8.6,3.4-2.54,7.06-4.66,10.75-6.7,3.72-1.98,7.54-3.77,11.45-5.34,3.9-1.57,7.88-2.98,11.99-3.97-3.68,2.07-7.38,4.01-11.08,5.94-3.69,1.95-7.4,3.82-11.05,5.82-1.85.95-3.66,1.97-5.47,2.97l-2.72,1.51c-.89.53-1.78,1.06-2.68,1.57-3.56,2.13-7.07,4.32-10.49,6.8Z"/>
+      <path class="light" d="M62.84,363.43c.9-1.14,2.29-1.79,3.66-2.2,1.39-.41,2.82-.5,4.23-.47,2.8.17,5.49.73,8.12,1.46,2.63.72,5.17,1.65,7.66,2.69,2.5,1.02,4.92,2.23,7.27,3.55-2.65-.57-5.23-1.27-7.82-1.91-2.58-.65-5.15-1.31-7.72-1.85-2.57-.54-5.14-1-7.69-1.21-1.26-.11-2.53-.26-3.78-.28-1.27-.05-2.52-.03-3.93.23Z"/>
+      <path d="M62.84,361.41c.9-1.14,2.29-1.79,3.66-2.2,1.39-.41,2.82-.5,4.23-.47,2.8.17,5.49.73,8.12,1.46,2.63.72,5.17,1.65,7.66,2.69,2.5,1.02,4.92,2.23,7.27,3.55-2.65-.57-5.23-1.27-7.82-1.91-2.58-.65-5.15-1.31-7.72-1.85-2.57-.54-5.14-1-7.69-1.21-1.26-.11-2.53-.26-3.78-.28-1.27-.05-2.52-.03-3.93.23Z"/>
+      <path d="M69.71,440.77c1.17,2.11,2.4,4.15,3.64,6.19,1.29,2.01,2.58,4,3.93,5.97,2.69,3.94,5.5,7.79,8.24,11.76-3.57-3.25-6.63-7.02-9.38-10.98-2.69-3.99-5.1-8.28-6.43-12.94Z"/>
+      </g>
+    </g>
+  </defs>
+</svg>
+
+<svg id="stage" aria-label="Switchboard calls"><g id="world"></g></svg>
+<svg id="wave" aria-label="The calls under one umbrella" style="display:none"><g id="wave-world"></g></svg>
+
+<div id="hud" class="faded">
+  <h1 class="header">The average call, by topic</h1>
+  <p id="hud-line"></p>
+  <ul id="legend"></ul>
+  <p id="word-key">Disfluent words in the lines: <span class="w-rp">repeated or reworded</span> · <span class="w-et">editing term</span> · <span class="w-fr">cut-off</span> · <span class="w-uh">uh</span> · <span class="w-um">um</span></p>
+</div>
+<div id="lines"></div>
+<p id="hint" class="faded">Click the receiver to answer</p>
+
+<!-- The single-call screen: the drawing, a note for when the call's file cannot be read, and the bubble that shows one utterance. -->
+<div id="call" hidden>
+  <svg id="call-svg" aria-label="One call, utterance by utterance"></svg>
+  <p id="call-note" hidden></p>
+</div>
+<div id="say" hidden></div>
+
+<!-- The "i" button in the corner, and the panel it opens: what comes from the corpus, what was made for
+     this piece, and the rule behind each thing that was made. Each rule is a <details> block that opens on a click. -->
+<button id="info-button" type="button" aria-label="About the data" aria-expanded="false" aria-controls="info">i</button>
+<div id="info-backdrop" hidden></div>
+<aside id="info" hidden>
+  <h2 class="header">What is measured, and what was made</h2>
+  <p>The talk, the topics and the marks on each word come from the Switchboard corpus: telephone calls between strangers, recorded in 1991 and 1992 and annotated by people. The sentence types and the kinds of disfluent word were made for this piece. Each is produced by a fixed rule, written out below, so the same files always give the same picture. No utterance was labelled case by case, by a person or by an AI model. One thing was not made by rule: the grouping of topics under umbrellas.</p>
+
+  <h3 class="header">From the corpus, as annotated</h3>
+  <details>
+    <summary><div><b>The words, topics, dates and annotations</b><span>Used as they are</span></div></summary>
+    <ul>
+      <li><b>The words of each call</b> and who said them: the Switchboard transcripts.</li>
+      <li><b>Topic:</b> the prompt the two callers were given. It is not a coding of what they went on to say.</li>
+      <li><b>Date</b> of the call.</li>
+      <li><b>Disfluency marks on words:</b> filled pauses, editing terms, repairs (with the part that gets redone marked off) and cut-off words, from the corpus's disfluency annotation.</li>
+      <li><b>A parse of each sentence,</b> from the Penn Treebank release of Switchboard. The sentence types below are read off these parses.</li>
+      <li><b>A dialog act for each utterance:</b> what it is doing, such as a statement, a question or a backchannel. The corpus has 42 kinds; their names are shortened here.</li>
+    </ul>
+  </details>
+
+  <h3 class="header">Made for this piece, by rule</h3>
+  <details>
+    <summary><div><b>The five sentence types</b><span>The colors of every bar</span></div></summary>
+    <p>The corpus has no such category. A script reads the parse of each sentence and gives it one type:</p>
+    <table>
+      <tr><th>Complete, fluent</th><td>The parse is a clause (its top label is S, SQ, SBARQ or SINV), it is not marked unfinished, and it has none of the three marks in the next row.</td></tr>
+      <tr><th>Complete, with a disfluency</th><td>The same, but it contains at least one of: a repair (an EDITED node in the parse), an "uh" or "um", or a cut-off word.</td></tr>
+      <tr><th>Unfinished clause</th><td>The parse is a clause that the annotators marked as unfinished (the tag -UNF, outside any repair).</td></tr>
+      <tr><th>Response token</th><td>The parse is an interjection (top label INTJ): "yeah", "uh-huh", "right".</td></tr>
+      <tr><th>Fragment</th><td>Anything else: a noun phrase, a prepositional phrase, and so on.</td></tr>
+    </table>
+    <p>Where an utterance holds more than one parsed sentence, it takes the type of the longest. Words are then counted by the type of the utterance they sit in.</p>
+    <p class="note">These rules have not been checked against hand coding.</p>
+  </details>
+  <details>
+    <summary><div><b>Disfluent words, and their five kinds</b><span>The thin column beside an umbrella; the colored words in a line of talk</span></div></summary>
+    <p>A word counts as disfluent if the corpus marks it as one of four things. The marks are the corpus's; the plain names, and the split of filled pauses into two, are ours.</p>
+    <table>
+      <tr><th>Repeated or reworded</th><td>The part of a repair that gets redone: the words a speaker says and then says again ("about, uh, about") or changes ("we were, I was"). The corpus calls this the reparandum.</td></tr>
+      <tr><th>Editing term</th><td>Words that flag a repair, nearly always "I mean".</td></tr>
+      <tr><th>Cut-off word</th><td>A word broken off before its end, outside a repair.</td></tr>
+      <tr><th>"Uh" and "um"</th><td>Filled pauses, split by which of the two was said.</td></tr>
+    </table>
+    <p>Rates are these words per 100 words spoken.</p>
+  </details>
+  <details>
+    <summary><div><b>The 650 calls</b><span>Which calls are in the piece</span></div></summary>
+    <p>This release of the corpus holds 1,155 calls. Only 650 of them come with parses, and without a parse a sentence cannot be given a type, so the piece shows those 650.</p>
+  </details>
+  <details>
+    <summary><div><b>The average call</b><span>The umbrella bars</span></div></summary>
+    <p>A bar's height is the mean number of words per call among the calls under that umbrella. Each segment is the mean number of those words that sit in one sentence type.</p>
+  </details>
+  <details>
+    <summary><div><b>The order of calls on the black screen</b><span>Why each topic looks like a hump</span></div></summary>
+    <p>Topics run in alphabetical order. Inside a topic the calls are sorted by length and dealt alternately to the left and the right, so the longest land in the middle. Bar heights share one scale within an umbrella, not across umbrellas.</p>
+  </details>
+  <details>
+    <summary><div><b>The lines of talk</b><span>The quotes beside a call in focus</span></div></summary>
+    <p>Each quote is chosen by rule from that call's own utterances of that type.</p>
+    <ul>
+      <li><b>Response tokens:</b> the wording used most often in the call.</li>
+      <li><b>The other four types:</b> the utterance whose length in words is closest to the median for that type in the call. If two are equally close, the earlier one.</li>
+    </ul>
+    <p class="note">A quote is typical in length only. It does not claim to be typical of what was said.</p>
+  </details>
+  <details>
+    <summary><div><b>The two strands and the cord</b><span>The single call</span></div></summary>
+    <p>Each bar is one utterance, as long as its number of words, placed in the order the transcript gives. The upper strand is the person who placed the call, the lower strand the person who answered. Where the other speaker comes in halfway through an utterance, it shows as two bars of the same color.</p>
+    <p>Where a strand turns to cord, that person is waiting: the cord is as long as the words the other person says in the meantime. It is not silence. This release of the corpus has no timing, so the piece cannot show how long anything took, or where two people spoke at once.</p>
+    <p>Most transcripts stop without a goodbye: only 172 of the 650 calls have a closing among their last few utterances. Where the bars stop, the corpus's transcript ends. The page has not cut anything off.</p>
+    <p class="note">An outlined bar is an utterance with no parse, and so no type.</p>
+  </details>
+
+  <h3 class="header">Made for this piece, by judgment</h3>
+  <details>
+    <summary><div><b>The ten topic umbrellas</b><span>Which topics are grouped together</span></div></summary>
+    <p>The corpus lists 64 topic prompts among these calls and does not group them. LLM assisted semantic analysis of topic commonalities determined umbrella groupings with a human review and refining pass. A different grouping would move calls between bars.</p>
+    <ul id="info-umbrellas"></ul>
+    <p class="note">A few topic names are abbreviated in the corpus and are spelled out here.</p>
+  </details>
+
+  <p class="note" style="margin-top:18px">The sentence types and word marks are computed by <code>extract_swda.py</code>; everything else is computed in this page. Running the script again on the corpus reproduces every data file exactly.</p>
+</aside>
+
+<!-- Shown only when the page cannot fetch the data file by itself (opened by double-click). -->
+<div id="loader" hidden>
+  <p>This page was opened straight from disk, so the browser will not let it read the data file on its own. Choose <strong>conversations.csv</strong> to start.</p>
+  <input type="file" id="picker" accept=".csv">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+// ===========================================================================
+// SETTINGS YOU CAN EDIT
+// ===========================================================================
+
+// Where the data lives, relative to this page. conversations.csv is written by
+// extract_swda.py. If it sits in a subfolder, give the path, e.g. "swda_d3/conversations.csv".
+const dataFile = "conversations.csv";
+// The folder of per-call files, also written by extract_swda.py: one <call number>.json each.
+// A call's file is fetched when the call is put in focus, so the page must come from a web server.
+const callFolder = "conversations/";
+const corpusName = "Switchboard Dialog Act Corpus";
+
+// The five sentence types. "key" is the column in conversations.csv that holds a
+// call's word count for that type. The order is the stacking order, bottom to top.
+const types = [
+  { key: "stw_complete_fluent",    label: "Complete sentence, fluent",            short: "Complete, fluent",    color: "var(--fluent)" },
+  { key: "stw_complete_disfluent", label: "Complete sentence, with a disfluency", short: "Complete, disfluent", color: "var(--ink)" },
+  { key: "stw_unfinished",         label: "Unfinished clause",                    short: "Unfinished",          color: "var(--unfinished)" },
+  { key: "stw_fragment",           label: "Fragment (no clause)",                 short: "Fragment",            color: "var(--fragment)" },
+  { key: "stw_response_token",     label: "Response token (yeah, uh-huh)",        short: "Response token",      color: "var(--response)" }
+];
+const keys = types.map(t => t.key);
+// The type drawn in the ink color, the opposite of the background. It is the segment
+// the camera zooms into, and the one the disfluency strip lines up with.
+const inkType = 1;
+
+// The kinds of disfluent word, for the thin strip that appears beside a bar in focus.
+// "count" reads how many words of that kind one call has, from columns of conversations.csv.
+// The order is the stacking order, bottom to top: three kinds that come from repairs,
+// then the two filled pauses. "Repeated or reworded" is the corpus's reparandum: words a
+// speaker says and then says again ("about, uh, about") or changes ("we were, I was"). (20 of the 21,599 filled pauses are neither "uh" nor "um"
+// and are left out.)
+const kinds = [
+  { label: "Repeated or reworded words", short: "Repeated, reworded", count: call => call.w_rp },
+  { label: "Editing terms (“I mean”)", short: "Editing terms",  count: call => call.w_et },
+  { label: "Cut-off words",              short: "Cut-off words",  count: call => call.w_fr },
+  { label: "“Uh”",                       short: "“Uh”",           count: call => call.uh },
+  { label: "“Um”",                       short: "“Um”",           count: call => call.um }
+];
+
+// Which topics belong to which umbrella. This grouping is an editorial choice.
+// Topic names are spelled exactly as in the "topic" column of conversations.csv.
+const umbrellas = {
+  "Education & society":      ["CHOOSING A COLLEGE", "PUBLIC EDUCATION", "SOCIAL CHANGE", "WOMEN'S ROLES"],
+  "Entertainment & media":    ["BOOKS AND LITERATURE", "MAGAZINES", "MOVIES", "MUSIC", "NEWS MEDIA", "TV PROGRAMS"],
+  "Family":                   ["CARE OF THE ELDERLY", "CHILD CARE", "FAMILY LIFE", "FAMILY REUNIONS"],
+  "Home & hobbies":           ["AUTO REPAIRS", "GARDENING", "HOBBIES AND CRAFTS", "HOME REPAIRS", "HOUSES", "PAINTING", "PETS", "RECIPES/FOOD/COOKING", "WOODWORKING"],
+  "Law & justice":            ["CAPITAL PUNISHMENT", "CRIME", "DRUG TESTING", "GUN CONTROL", "RIGHT TO PRIVACY", "TRIAL BY JURY"],
+  "Money & work":             ["BUYING A CAR", "CONSUMER GOODS", "CREDIT CARD USE", "FAMILY FINANCE", "JOB BENEFITS"],
+  "Politics & world affairs": ["AIDS", "ELECTIONS AND VOTING", "ETHICS IN GOVERNMENT", "FEDERAL BUDGET", "IMMIGRATION", "LATIN AMERICA", "MIDDLE EAST", "POLITICS", "PUERTO RICAN STTEHD", "SOVIET UNION", "SVGS & LOAN BAILOUT", "TAXES", "UNIVERSAL HEALTH INS", "UNIVERSAL PBLIC SERV", "VIETNAM WAR"],
+  "Science & environment":    ["AIR POLLUTION", "COMPUTERS", "METRIC SYSTEM", "RECYCLING", "SPACE FLIGHT AND EXPLORATION"],
+  "Small talk":               ["CLOTHING AND DRESS", "RESTAURANTS", "VACATION SPOTS", "WEATHER CLIMATE"],
+  "Sports & outdoors":        ["BASEBALL", "BASKETBALL", "BOATING AND SAILING", "CAMPING", "EXERCISE AND FITNESS", "FISHING", "FOOTBALL", "GOLF"]
+};
+
+// What is written across the bracket beside a bar in focus, to say that a second click opens it.
+const umbrellaCue = "Click to see all topics";
+const callCue = "Click to open the call";
+
+// Topic labels in the corpus are in capitals and a few are cut short. The names listed
+// here are spelled out by hand; every other topic is simply put in sentence case.
+const topicNames = {
+  "AIDS": "AIDS", "TV PROGRAMS": "TV programs", "LATIN AMERICA": "Latin America", "MIDDLE EAST": "Middle East",
+  "SOVIET UNION": "Soviet Union", "VIETNAM WAR": "Vietnam War", "WEATHER CLIMATE": "Weather and climate",
+  "RECIPES/FOOD/COOKING": "Recipes, food and cooking", "PUERTO RICAN STTEHD": "Puerto Rican statehood",
+  "SVGS & LOAN BAILOUT": "Savings & loan bailout", "UNIVERSAL HEALTH INS": "Universal health insurance",
+  "UNIVERSAL PBLIC SERV": "Universal public service"
+};
+const topicName = topic => topicNames[topic] ?? topic[0] + topic.slice(1).toLowerCase();
+
+// ===========================================================================
+// 1. LOAD
+// d3.csv fetches and parses the file; d3.autoType turns number and date strings
+// into numbers and dates. If the fetch is blocked (page opened by double-click),
+// a file chooser appears and d3.csvParse reads the chosen file instead.
+// ===========================================================================
+d3.csv(dataFile, d3.autoType).then(start, () => {
+  document.querySelector("#loader").hidden = false;
+});
+document.querySelector("#picker").addEventListener("change", event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  file.text().then(text => {
+    document.querySelector("#loader").hidden = true;
+    start(d3.csvParse(text, d3.autoType));
+  });
+});
+
+// ===========================================================================
+// Shared variables
+// ===========================================================================
+const svg = d3.select("#stage");
+const world = d3.select("#world");            // everything drawn lives in here, so one transform zooms it all
+const hud = document.querySelector("#hud");
+const hint = document.querySelector("#hint");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ms = duration => (reduceMotion ? 0 : duration);
+const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+const fmt = d3.format(",.0f"), pct = d3.format(".0%"), rate1 = d3.format(".1f");
+
+let calls;                 // one row per call (the 650 with sentence types)
+let data;                  // ten rows, one per umbrella
+let corpus;                // { calls, from, to } for the receiver label
+let W, H, L;               // window size and the layout computed from it
+let view;                  // the current camera: [world x at screen centre, world y at screen centre, world width in view]
+let state = "opening";     // opening -> umbrellas -> focus -> wave -> wave-focus -> call
+let focused = null;        // the umbrella row in focus
+let busy = false;          // true while a transition that should not be interrupted is running
+let ringTimer = null;
+let stageStale = false;    // true if the window was resized while the umbrella screen was hidden
+let waveStale = false;     // the same for the waveform, while the single call was showing
+
+// ===========================================================================
+// 2. PREPARE THE DATA
+// Keep the calls that have sentence types, tag each with its umbrella, then
+// reduce each umbrella to one row: its number of calls and topics, and the
+// average words per call for each sentence type.
+// ===========================================================================
+function start(rows) {
+  calls = rows.filter(row => row.has_parse === 1);
+
+  const umbrellaOf = new Map();
+  for (const [umbrella, topics] of Object.entries(umbrellas)) {
+    for (const topic of topics) umbrellaOf.set(topic, umbrella);
+  }
+  calls.forEach(call => {
+    call.umbrella = umbrellaOf.get(call.topic) ?? "Other";
+    call.total = d3.sum(keys, key => call[key]);                     // words that sit in a typed sentence
+    call.kinds = kinds.map(kind => 100 * kind.count(call) / call.words);
+  });
+
+  data = d3.rollups(
+    calls,
+    group => {
+      const row = { calls: group.length, topics: new Set(group.map(call => call.topic)).size };
+      for (const key of keys) row[key] = d3.mean(group, call => call[key]);
+      // disfluent words of each kind, per 100 words spoken in this umbrella's calls
+      const words = d3.sum(group, call => call.words);
+      row.kinds = kinds.map(kind => 100 * d3.sum(group, kind.count) / words);
+      row.disfluent = d3.sum(row.kinds);
+      return row;
+    },
+    call => call.umbrella
+  ).map(([umbrella, row]) => ({ umbrella, ...row }));
+
+  data.forEach(d => { d.total = d3.sum(keys, key => d[key]); });      // the bar height, in words
+  data.sort((a, b) => d3.ascending(a.umbrella, b.umbrella));          // alphabetical
+
+  const [from, to] = d3.extent(calls, call => call.date);
+  corpus = { calls: calls.length, from, to };
+
+  // legend
+  d3.select("#legend").selectAll("li").data(types).join("li").each(function (type) {
+    d3.select(this).append("i").style("background", type.color);
+    d3.select(this).append("span").text(type.label);
+  });
+
+  build();
+  window.addEventListener("resize", debounce(build, 150));
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (!infoPanel.hidden) showInfo(false); else goBack();              // Escape closes the info panel first
+  });
+  svg.on("click", goBack);                                           // a click on empty space goes back
+  waveSvg.on("click", goBack);
+  document.querySelector("#call").addEventListener("click", () => (pinned ? hideSay() : leaveCall()));
+}
+
+// ===========================================================================
+// 3. LAYOUT
+// Every position is computed from the window size, so the piece fits any screen.
+// ===========================================================================
+function layout() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  const names = data.map(d => d.umbrella);
+  const side = clamp(W * 0.07, 20, 90);
+
+  // The receiver is about 400 units long and 142 tall (see drawReceiver); "s" scales it to pixels.
+  // Its label hangs 50px below it when docked.
+  const open = { s: Math.min(W * 0.8, 560) / 400 };
+  const dock = { s: Math.min(W * 0.8, 380) / 400 };
+  open.x = W / 2;
+  open.y = H * 0.43;
+  dock.x = W / 2;
+  dock.y = H - 14 - 50 - RECEIVER.half * dock.s;
+
+  const cordHeight = clamp(H * 0.13, 50, 120);
+  const base = dock.y - RECEIVER.half * dock.s - cordHeight;         // the baseline the bars stand on
+  const top = hud.offsetHeight + 22 + 46;                            // leave room for the heading and value labels
+  const barMax = Math.max(60, base - top);
+
+  const x = d3.scalePoint().domain(names).range([side + 18, W - side]).padding(0.5);
+  const y = d3.scaleLinear().domain([0, d3.max(data, d => d.total)]).range([0, barMax]);
+  const barWidth = clamp(x.step() * 0.32, 12, 38);
+  const cordX = d3.scalePoint().domain(names).range(RECEIVER.handle); // where each cord leaves the handle, in receiver units
+
+  return { side, open, dock, base, top, barMax, x, y, barWidth, cordX };
+}
+
+// ===========================================================================
+// 4. THE CAMERA
+// The whole drawing sits in one group. Zooming is a transform on that group.
+// A "view" is [cx, cy, w]: the point of the drawing at the centre of the screen
+// and how much of its width is visible. d3.interpolateZoom glides between views.
+// ===========================================================================
+const homeView = () => [W / 2, H / 2, W];
+function transformOf(v) {
+  const k = W / v[2];
+  return `translate(${W / 2 - v[0] * k},${H / 2 - v[1] * k}) scale(${k})`;
+}
+function flyTo(target, duration) {
+  const path = d3.interpolateZoom(view, target);
+  return world.transition("fly").duration(ms(duration)).ease(d3.easeCubicInOut)
+    .attrTween("transform", () => t => transformOf(view = path(t)));
+}
+
+// ===========================================================================
+// 5. BUILD
+// Draws everything for the current window size and the current state, without
+// animation. It runs once at the start and again whenever the window is resized.
+// ===========================================================================
+function build() {
+  if (state === "call") {                                            // only the single call is showing: redraw it,
+    stageStale = waveStale = true;                                   // and rebuild the other two screens when we return to them
+    return drawCall(false);
+  }
+  if (state === "wave" || state === "wave-focus") {                  // the umbrella screen is hidden: redraw the waveform
+    stageStale = true;                                               // and rebuild the umbrellas when we return to them
+    return buildWave(false);
+  }
+  stageStale = false;
+  world.interrupt("fly");
+  setHudLine();                                                      // set the heading text first: the layout measures it
+  L = layout();
+  view = homeView();
+  const opening = state === "opening";
+  world.attr("transform", transformOf(view)).attr("class", opening ? "pre" : null);
+  world.selectAll("*").remove();
+
+  // --- cords: one curve from the receiver's handle up to the foot of each bar ---
+  world.append("g").selectAll("path").data(data).join("path")
+    .attr("class", "cord")
+    .attr("d", d => {
+      const cx = L.cordX(d.umbrella);                                // start just under the handle's top edge, hidden behind it
+      const x0 = L.dock.x + cx * L.dock.s, y0 = L.dock.y + (RECEIVER.handleEdge(cx) + 12) * L.dock.s;
+      const x1 = L.x(d.umbrella), y1 = L.base + 4, mid = (y0 + y1) / 2;
+      return `M${x0},${y0}C${x0},${mid} ${x1},${mid} ${x1},${y1}`;
+    })
+    .each(function () {                                              // a dash as long as the path lets it "draw" itself
+      const length = this.getTotalLength();
+      d3.select(this).attr("stroke-dasharray", length).attr("stroke-dashoffset", opening ? length : 0);
+    });
+
+  // --- bars: one group per umbrella, placed at its foot. Inside, y runs upward as negative numbers. ---
+  const bars = world.append("g").selectAll("g").data(data).join("g")
+    .attr("class", "bar")
+    .attr("transform", d => `translate(${L.x(d.umbrella)},${L.base})`)
+    .attr("tabindex", 0).attr("role", "button")
+    .attr("aria-label", d => `${d.umbrella}: ${d.calls} calls, ${fmt(d.total)} words in the average call, ${pct(d[keys[0]] / d.total)} in complete fluent sentences`)
+    .on("click", (event, d) => { event.stopPropagation(); pickBar(d); })
+    .on("keydown", (event, d) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickBar(d); } });
+
+  bars.append("rect").attr("class", "hit")                           // a generous invisible click target
+    .attr("x", -L.x.step() / 2).attr("width", L.x.step())
+    .attr("y", -L.barMax - 30).attr("height", L.barMax + 40);
+
+  bars.append("g").attr("class", "stack")                            // the stack is squashed flat until the bars grow
+    .attr("transform", opening ? "scale(1,0.001)" : "scale(1,1)")
+    .selectAll("rect").data(d => segmentsOf(d)).join("rect")
+      .attr("class", s => "seg t" + s.type)
+      .attr("x", -L.barWidth / 2).attr("width", L.barWidth)
+      .attr("y", s => s.y).attr("height", s => s.height);
+
+  bars.append("text").attr("class", "name")                          // the name runs up the left side of the bar
+    .attr("transform", `translate(${-L.barWidth / 2 - 6},-1) rotate(-90)`)
+    .text(d => d.umbrella);
+
+  bars.append("text").attr("class", "value")                         // average words per call, above the bar
+    .attr("y", d => -L.y(d.total) - 8)
+    .text(d => fmt(d.total));
+
+  // Three groups of extras that show only in focus. focusOn() gives them their positions,
+  // because those depend on how far the camera zooms.
+  const shares = bars.append("g").attr("class", "detail shares")      // 1. a share label for each segment
+    .selectAll("g").data(d => segmentsOf(d)).join("g");
+  shares.append("line");
+  const shareText = shares.append("text").attr("dy", "0.35em");
+  shareText.append("tspan").attr("class", "pct").text(s => pct(s.share));
+  shareText.append("tspan").attr("dx", "0.5em").text(s => types[s.type].short);
+
+  const cue = bars.append("g").attr("class", "detail cue");           // 2. the cue: a bracket left of the bar, with text across it
+  cue.append("path");
+  cue.append("text").text(umbrellaCue);
+
+  const strip = bars.append("g").attr("class", "detail strip");       // 3. the disfluency strip
+  strip.append("rect").attr("class", "track");                        // stands for every word in the call
+  const kind = strip.selectAll("g").data(d => d.kinds.map((rate, i) => ({ kind: i, rate }))).join("g");
+  kind.append("rect").attr("class", k => "kind k" + k.kind);
+  kind.append("line");
+  const kindText = kind.append("text").attr("dy", "0.35em");
+  if (W < 700) {                                                      // narrow: right-aligned, name then number
+    kindText.append("tspan").text(k => kinds[k.kind].short);
+    kindText.append("tspan").attr("class", "pct").attr("dx", "0.5em").text(k => rate1(k.rate));
+  } else {
+    kindText.append("tspan").attr("class", "pct").text(k => rate1(k.rate));
+    kindText.append("tspan").attr("dx", "0.5em").text(k => kinds[k.kind].label);
+  }
+  strip.append("text").attr("class", "header title").text("Disfluent words");
+  strip.append("text").attr("class", "sum").text(d => `${rate1(d.disfluent)} in every 100 words`);
+
+  // --- the receiver ---
+  const receiver = world.append("g").attr("class", "receiver")
+    .attr("transform", place(opening ? L.open : L.dock))
+    .attr("tabindex", opening ? 0 : null).attr("role", opening ? "button" : null)
+    .attr("aria-label", "Telephone receiver. Press to answer.")
+    .on("click", event => { if (state === "opening") { event.stopPropagation(); answer(); } })
+    .on("keydown", event => { if (state === "opening" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); answer(); } });
+  drawReceiver(receiver);
+
+  // --- text over the stage ---
+  hud.classList.toggle("faded", opening);
+  hint.classList.toggle("faded", !opening);
+  hint.style.top = (L.open.y + (RECEIVER.half + 50 / L.dock.s) * L.open.s + 20) + "px";
+  setHudLine();
+
+  if (state === "focus") focusOn(focused, 0);
+  if (opening) startRinging();
+}
+
+// Five rectangles for one bar, bottom to top, in the bar's own coordinates.
+function segmentsOf(d) {
+  let sum = 0;
+  return keys.map((key, type) => {
+    const y0 = L.y(sum), y1 = L.y(sum += d[key]);
+    const gap = type < keys.length - 1 && y1 - y0 > 3 ? 1 : 0;       // a 1px gap separates the segments
+    return { type, share: d[key] / d.total, y: -y1 + gap, height: Math.max(0.5, y1 - y0 - gap), mid: -(y0 + y1) / 2, y0, y1 };
+  });
+}
+
+// ===========================================================================
+// 6. THE RECEIVER
+// The drawing is turned on its side and scaled so that, in the receiver's own
+// units, it is 412 long and 142 tall, centred on (0, 0), with the cord stub at
+// the right-hand end. place() moves and scales the whole group into position.
+// ===========================================================================
+const RECEIVER = {
+  half: 71,                                        // half its height
+  stub: [206, 3],                                  // where the cord joins it
+  handle: [-104, 70],                              // the stretch of handle the bar cords leave from
+  handleEdge: x => -58 + (x + 111) * 0.116,        // height of the handle's top edge at x (it slopes)
+  // maps the upright drawing (232.68 x 673.75) into the units above
+  fit: "scale(0.6115) rotate(90) translate(-116.34,-336.875)"
+};
+
+function place(spot) {
+  return `translate(${spot.x},${spot.y}) scale(${spot.s})`;
+}
+
+function drawReceiver(g) {
+  // The coiled cord. It stays attached at every stage and is long enough to run off the
+  // right edge of even a very wide screen, at the opening size and at the docked size.
+  g.append("path").attr("class", "tail")
+    .attr("d", coil([RECEIVER.stub, [250, 8], [330, 52], [480, 92], [700, 84], [1000, 100], [1500, 90], [2300, 100]], 7, 10));
+
+  // the drawing itself sits in its own group, so the ring can rock it without moving the label
+  const art = g.append("g").attr("class", "art");
+  art.append("use").attr("href", "#receiver-art").attr("transform", RECEIVER.fit);
+
+  // an invisible box over the whole receiver, so a click between the cups still counts
+  g.append("rect").attr("class", "hit").attr("x", -206).attr("y", -RECEIVER.half).attr("width", 412).attr("height", 2 * RECEIVER.half);
+
+  // the label hangs under the receiver. Its sizes are in pixels at the docked size.
+  const month = d3.utcFormat("%B %Y");
+  const label = g.append("g").attr("transform", `translate(0,${RECEIVER.half}) scale(${1 / L.dock.s})`);
+  label.append("text").attr("class", "header line1").attr("y", 24).text(corpusName);
+  label.append("text").attr("class", "line2").attr("y", 43)
+    .text(`${fmt(corpus.calls)} calls · ${month(corpus.from)} to ${month(corpus.to)}`);
+}
+
+// A coiled phone cord: follow a smooth centre line and loop around it.
+// points: the centre line; radius: half the coil's width; pitch: distance between loops.
+function coil(points, radius, pitch) {
+  const guide = svg.append("path").attr("d", d3.line().curve(d3.curveBasis)(points)).style("visibility", "hidden");
+  const node = guide.node(), length = node.getTotalLength();
+  const loops = Math.max(1, Math.round(length / pitch)), steps = loops * 14;
+  const out = [];
+  for (let i = 0; i <= steps; i++) {
+    const at = (i / steps) * length;
+    const p = node.getPointAtLength(at), q = node.getPointAtLength(Math.min(length, at + 1));
+    const tx = q.x - p.x, ty = q.y - p.y, size = Math.hypot(tx, ty) || 1;
+    const angle = (i / steps) * loops * 2 * Math.PI;
+    const across = radius * Math.sin(angle), along = radius * 0.85 * Math.cos(angle);
+    out.push([p.x + (-ty / size) * across + (tx / size) * along, p.y + (tx / size) * across + (ty / size) * along]);
+  }
+  guide.remove();
+  return d3.line().curve(d3.curveBasis)(out);
+}
+
+// The ring: every few seconds the receiver rocks about the point where its cord joins, and comes to rest.
+function startRinging() {
+  if (ringTimer) ringTimer.stop();
+  if (reduceMotion) return;
+  const ring = () => {
+    if (state !== "opening") return;
+    world.select(".receiver .art").transition("ring").duration(750)
+      .attrTween("transform", () => t => `rotate(${3.5 * Math.sin(t * Math.PI * 12) * (1 - t)},${RECEIVER.stub})`);
+  };
+  ringTimer = d3.interval(ring, 2600);
+  d3.timeout(ring, 700);
+}
+
+// ===========================================================================
+// 7. OPENING -> UMBRELLAS
+// The receiver is picked up, settles at the bottom, and the bars grow from it.
+// ===========================================================================
+function answer() {
+  if (busy) return;
+  busy = true;
+  state = "umbrellas";
+  if (ringTimer) ringTimer.stop();
+  hint.classList.add("faded");
+
+  const receiver = world.select(".receiver").attr("tabindex", null).attr("role", null);
+  receiver.select(".art").interrupt("ring").attr("transform", null);
+  const lifted = { x: L.open.x, y: L.open.y, s: L.open.s * 1.16 };
+
+  receiver.attr("transform", place(L.open))
+    .transition().duration(ms(280)).ease(d3.easeCubicOut).attr("transform", place(lifted))      // zoom in
+    .transition().duration(ms(850)).ease(d3.easeCubicInOut).attr("transform", place(L.dock))    // settle at the bottom
+    .on("end", () => {
+      world.classed("pre", false).classed("growing", true);                                        // bars and cords may show now
+      world.selectAll(".cord").transition().duration(ms(520)).delay((d, i) => ms(i * 60))          // cords draw upward
+        .attr("stroke-dashoffset", 0);
+      world.selectAll(".stack").transition().duration(ms(800)).delay((d, i) => ms(380 + i * 60))   // bars grow
+        .ease(d3.easeCubicOut).attr("transform", "scale(1,1)");
+      d3.timeout(() => {
+        world.classed("growing", false);                                                           // labels fade in
+        hud.classList.remove("faded");
+        busy = false;
+      }, ms(380 + data.length * 60 + 500));
+    });
+}
+
+// ===========================================================================
+// 8. FOCUS, ZOOM AND BACK
+// First click on a bar: focus, which also shows the share of each sentence type and the
+// disfluency strip. Second click on the same bar: zoom into its ink
+// segment (complete sentences with a disfluency) until the screen is black. A click anywhere else, other bars included: back.
+// ===========================================================================
+function pickBar(d) {
+  if (busy || (state !== "umbrellas" && state !== "focus")) return;
+  if (state === "umbrellas") focusOn(d, 750);
+  else if (focused === d) zoomToBlack(d);
+  else toUmbrellas(750);                                             // any other bar counts as "anywhere else"
+}
+
+function focusOn(d, duration) {
+  state = "focus";
+  focused = d;
+  setHudLine();                                                      // set the heading text first: the space below it is measured next
+  const barHeight = L.y(d.total);
+  const narrow = W < 700;
+  // The bar may fill the space between the heading and the bottom edge.
+  const spaceTop = hud.offsetHeight + 22 + 34, spaceBottom = H - 44;
+  const k = clamp((spaceBottom - spaceTop) / barHeight, 1.2, 3.4);   // how far to zoom in
+
+  world.classed("has-focus", true);
+  world.selectAll(".bar").classed("is-focused", b => b === d);
+  world.selectAll(".cord").classed("is-focused", b => b === d);
+
+  const bar = world.selectAll(".bar").filter(b => b === d);
+  const px = n => n / k;                                             // n pixels on screen, in the drawing's units
+  const edge = L.barWidth / 2;
+  const fontSize = px(narrow ? 11 : 12.5);
+
+  // The cue: a bracket as tall as the bar, standing to the left of the bar's name, with the
+  // text written across its middle. A narrow screen has no room for both, so there the name
+  // steps out while the bar is in focus (the heading says it) and the bracket takes its place.
+  const nameSize = parseFloat(getComputedStyle(bar.select(".name").node()).fontSize);
+  const bracketX = narrow ? -edge - px(14) : -edge - 6 - nameSize - px(16), tick = px(6);
+  world.classed("no-name", narrow);
+  bar.select(".cue path").attr("stroke-width", px(1))
+    .attr("d", `M${bracketX + tick},${-barHeight}H${bracketX}V0H${bracketX + tick}`);
+  bar.select(".cue text").attr("font-size", px(10)).attr("stroke-width", px(8))
+    .attr("transform", `translate(${bracketX},${-barHeight / 2}) rotate(-90)`);
+
+  // Share labels on the right of the bar. Their sizes are divided by k so they stay
+  // the same size on screen however far the camera zooms. Labels that would collide
+  // are pushed upward, and a short leader ties each one to its segment.
+  let previous = Infinity;
+  bar.selectAll(".shares g").each(function (s) {
+    const at = Math.min(s.mid, previous - px(17));
+    previous = at;
+    d3.select(this).select("line")
+      .attr("x1", edge + px(2)).attr("y1", s.mid)
+      .attr("x2", edge + px(9)).attr("y2", at).attr("stroke-width", px(1));
+    d3.select(this).select("text").attr("x", edge + px(13)).attr("y", at).attr("font-size", fontSize);
+  });
+
+  // The disfluency strip: a thin column as tall as the bar, standing for every word in
+  // the call. Its filled block is the words that are themselves disfluent, at the same
+  // scale as the bar, centred beside the ink segment (three quarters of those words are
+  // spoken inside that kind of sentence). The strip stands to the right of the share
+  // labels, or, on a narrow screen, to the left of the bar's name.
+  const strip = bar.select(".strip");
+  const sharesRight = () => { const box = bar.select(".shares").node().getBBox(); return box.x + box.width; };
+  const out = narrow ? -1 : 1;
+  const stripWidth = px(14);
+  const near = narrow
+    ? bracketX - px(14)                                              // clear of the bracket
+    : sharesRight() + px(30);                                        // clear of the share labels
+  const x0 = narrow ? near - stripWidth : near;                      // left edge of the strip
+  const labelX = narrow ? x0 - px(20) : x0 + stripWidth + px(20);
+  strip.select(".track").attr("x", x0).attr("width", stripWidth).attr("y", -barHeight).attr("height", barHeight);
+
+  const centre = -segmentsOf(d)[inkType].mid;                        // height of the ink segment's middle above the baseline
+  let foot = centre - barHeight * d.disfluent / 200;                 // so the block starts half its own height below that
+  strip.selectAll("g").each(function (kind, i) {
+    const height = barHeight * kind.rate / 100, mid = -(foot + height / 2);
+    const at = -centre + (2 - i) * px(17);                           // five labels, evenly spaced around the same middle
+    d3.select(this).select("rect").attr("x", x0).attr("width", stripWidth).attr("y", -(foot + height)).attr("height", height);
+    d3.select(this).select("line")
+      .attr("x1", narrow ? x0 - px(2) : x0 + stripWidth + px(2)).attr("y1", mid)
+      .attr("x2", labelX - out * px(5)).attr("y2", at).attr("stroke-width", px(1));
+    d3.select(this).select("text").attr("x", labelX).attr("y", at)
+      .attr("text-anchor", narrow ? "end" : "start").attr("font-size", fontSize);
+    foot += height;
+  });
+  const labelsTop = -centre - 2 * px(17);
+  strip.select(".sum").attr("x", labelX).attr("y", labelsTop - px(24))
+    .attr("text-anchor", narrow ? "end" : "start").attr("font-size", fontSize);
+  strip.select(".title").attr("x", labelX).attr("y", labelsTop - px(42))
+    .attr("text-anchor", narrow ? "end" : "start").attr("font-size", px(narrow ? 9.5 : 10.5));
+
+  // Where the bar sits on screen: a little left of centre, moved over as far as needed
+  // for the labels on both sides to stay inside the window.
+  const stripBox = strip.node().getBBox();
+  const left = Math.min(bracketX - px(8), stripBox.x), right = Math.max(sharesRight(), stripBox.x + stripBox.width);
+  const screenX = clamp(0.42, (12 - left * k) / W, (W - 12 - right * k) / W);
+  // Neighbouring bars that would sit under those labels step out while this bar is in focus.
+  world.selectAll(".bar").classed("is-covered", b => {
+    const offset = L.x(b.umbrella) - L.x(d.umbrella);
+    return b !== d && offset > left - L.barWidth && offset < right + L.barWidth;
+  });
+  const screenY = (spaceTop + spaceBottom) / 2 / H;
+  const target = [
+    L.x(d.umbrella) + (0.5 - screenX) * W / k,
+    L.base - barHeight / 2 + (0.5 - screenY) * H / k,
+    W / k
+  ];
+  if (duration === 0) { view = target; world.attr("transform", transformOf(view)); }
+  else flyTo(target, duration);
+}
+
+function zoomToBlack(d) {
+  busy = true;
+  const s = segmentsOf(d)[inkType];                                  // the ink segment, in the middle of the bar
+  const inkHeight = s.y1 - s.y0;
+  world.classed("zooming", true);
+  hud.classList.add("faded");
+  // Aim at the middle of the segment and zoom until it covers the whole screen.
+  const target = [L.x(d.umbrella), L.base + s.mid, Math.min(L.barWidth, inkHeight * W / H) * 0.8];
+  flyTo(target, 1300).on("end", () => enterWave(d));
+}
+
+function goBack() {
+  if (busy) return;
+  if (state === "focus") toUmbrellas(750);
+  else if (state === "wave") (zoomT.k > 1.02 ? resetWaveZoom(600) : leaveWave());
+  else if (state === "wave-focus") unfocusCall();
+  else if (state === "call") leaveCall();
+}
+
+function toUmbrellas(duration) {
+  state = "umbrellas";
+  focused = null;
+  world.classed("has-focus", false).classed("zooming", false).classed("no-name", false);
+  world.selectAll(".is-focused").classed("is-focused", false);
+  world.selectAll(".is-covered").classed("is-covered", false);
+  hud.classList.remove("faded");
+  setHudLine();
+  flyTo(homeView(), duration);
+}
+
+// The heading and the sentence under it, for the current state.
+const dayFormat = d3.utcFormat("%-d %B %Y");
+const describeCall = call =>
+  `${topicName(call.topic)} · ${dayFormat(call.date)} · ${fmt(call.words)} words, ${rate1(d3.sum(call.kinds))} of every 100 disfluent.`;
+
+function setHudLine(hovered) {
+  const line = document.querySelector("#hud-line");
+  const onWave = state === "wave" || state === "wave-focus";
+  hud.querySelector("h1").textContent = state === "call" ? topicName(waveFocused.topic) : onWave ? focused.umbrella : "The average call, by topic";
+  if (state === "call") {
+    line.textContent = `${dayFormat(waveFocused.date)} · ${fmt(waveFocused.words)} words. Each bar is one utterance, as long as its words, in the order spoken. ` +
+      "Caller A is the upper strand, answerer B the lower; a strand turns to cord while its speaker waits. " +
+      "Point at a bar to read it, or click empty space to go back.";
+  } else if (state === "focus" && focused) {
+    line.textContent = `${focused.umbrella}: ${focused.calls} calls on ${focused.topics} topics, ${fmt(focused.total)} words in the average call. ` +
+      "Click the bar again to open its calls, or click anywhere else to go back.";
+  } else if (state === "wave-focus" && waveFocused) {
+    line.textContent = describeCall(waveFocused) + (waveFocused.picked ? " Beside it, in the callers' own words, is a typical line of each kind." : "") +
+      " Click the bar again to open the call, or click anywhere else to go back.";
+  } else if (onWave) {
+    line.textContent = hovered ? describeCall(hovered)
+      : `${focused.calls} calls on ${focused.topics} topics. Each bar is one call: fluent, complete sentences rise above the line and everything else hangs below it. ` +
+        "Scroll to widen, click a call to look closer, or click empty space to go back.";
+  } else {
+    line.textContent = "Bar height is the average number of words in a call. Only the blue part at the foot is spoken in complete, fluent sentences. Click a bar to look closer.";
+  }
+}
+
+// ===========================================================================
+// 9. THE WAVEFORM
+// Every call under one umbrella, on a black page. Topics run left to right in
+// alphabetical order. Inside a topic the calls are arranged short, long, short,
+// so each topic makes one hump and the row looks like a recording of speech.
+// A call's bar straddles a midline: its fluent, complete sentences rise above
+// the line in blue, and everything else hangs below it, starting with the
+// complete sentences that carry a disfluency, in white, next to the line.
+// ===========================================================================
+const waveSvg = d3.select("#wave"), waveWorld = d3.select("#wave-world");
+const above = [0];               // types drawn above the midline, nearest the line first
+const below = [1, 2, 3, 4];      // types drawn below it, nearest the line first
+let WV = null;                   // the waveform on screen: its calls, topics, scales and zoom
+let zoomT = d3.zoomIdentity;     // how far the row is stretched sideways (k) and shifted (x)
+let waveFocused = null;          // the call in focus
+
+// Put one umbrella's calls in order: topics alphabetically, and each topic's calls as a hump.
+function prepareWave(d) {
+  const topics = d3.groups(calls.filter(call => call.umbrella === d.umbrella), call => call.topic)
+    .map(([topic, group]) => ({ name: topicName(topic), calls: humpOrder(group) }))
+    .sort((a, b) => d3.ascending(a.name, b.name));
+  return { topics, calls: topics.flatMap(topic => topic.calls) };
+}
+
+// Short, long, short: sort by length, then deal the calls alternately to the left
+// and right ends, so the longest land in the middle.
+function humpOrder(group) {
+  const left = [], right = [];
+  d3.sort(group, call => call.total).forEach((call, i) => (i % 2 ? right.unshift(call) : left.push(call)));
+  return left.concat(right);
+}
+
+// The five rectangles of one call, in pixels measured from the midline (up is negative).
+function waveSegments(call) {
+  const out = [];
+  let reach = 0;
+  for (const type of above) {
+    const height = call[keys[type]] * WV.perWord;
+    out.push({ type, share: call[keys[type]] / call.total, y: -(reach + height), height: Math.max(0.5, height - 1), mid: -(reach + height / 2) });
+    reach += height;
+  }
+  reach = 0;
+  for (const type of below) {
+    const height = call[keys[type]] * WV.perWord;
+    out.push({ type, share: call[keys[type]] / call.total, y: reach + 1, height: Math.max(0.5, height - 1), mid: reach + height / 2 });
+    reach += height;
+  }
+  return out;
+}
+
+// The umbrella's black segment has filled the screen: swap the page to black and bring up its calls.
+function enterWave(d) {
+  state = "wave";
+  document.body.classList.add("black");
+  svg.style("visibility", "hidden");
+  waveSvg.style("display", null);
+  WV = prepareWave(d);
+  buildWave(true);
+  hud.classList.remove("faded");
+}
+
+// Draw the waveform for the current window size. "grow" plays the bars rising out of the midline.
+function buildWave(grow) {
+  state = "wave";                                                    // redrawing drops any focus
+  waveFocused = null;
+  zoomT = d3.zoomIdentity;
+  setHudLine();                                                      // set the heading text first: the layout measures it
+  W = window.innerWidth;
+  H = window.innerHeight;
+
+  // One scale for height, shared by every call: words -> pixels. The midline sits where
+  // the tallest upper half and the deepest lower half both fit.
+  const side = clamp(W * 0.05, 12, 70);
+  const top = hud.offsetHeight + 22 + 34, bottom = H - 30;
+  const tallest = d3.max(WV.calls, call => d3.sum(above, type => call[keys[type]]));
+  const deepest = d3.max(WV.calls, call => d3.sum(below, type => call[keys[type]]));
+  WV.perWord = (bottom - top) / (tallest + deepest);
+  WV.mid = top + tallest * WV.perWord;
+
+  // Sideways, the row is divided into equal slots. Each call takes one, and each topic gets
+  // a gap in front of it for its name: 2.4 slots, or more where that would be under 15px.
+  const width = W - 2 * side, count = WV.calls.length;
+  WV.gap = Math.max(2.4, 15 * (count + 1) / Math.max(1, width - 15 * WV.topics.length));
+  let slot = 0;
+  for (const topic of WV.topics) {
+    topic.slot = slot += WV.gap;
+    for (const call of topic.calls) call.slot = slot++;
+  }
+  WV.x = d3.scaleLinear().domain([0, slot + 1]).range([side, W - side]);   // slot number -> pixels, before any zooming
+  const slotWidth = WV.x(1) - WV.x(0);
+  WV.focusZoom = Math.max(1, 56 / slotWidth);                        // stretch at which a slot is 56px wide
+
+  waveWorld.interrupt("fly").attr("transform", null).attr("class", null);
+  waveWorld.selectAll("*").remove();
+
+  waveWorld.append("line").attr("class", "midline")
+    .attr("x1", 0).attr("x2", W).attr("y1", WV.mid + 0.5).attr("y2", WV.mid + 0.5);
+
+  waveWorld.append("g").selectAll("text").data(WV.topics).join("text")   // topic names, written up the gap before each hump
+    .attr("class", "topic").text(topic => topic.name);
+
+  const bars = waveWorld.append("g").selectAll("g").data(WV.calls).join("g")
+    .attr("class", "wbar")
+    .attr("tabindex", 0).attr("role", "button")
+    .attr("aria-label", call => `${topicName(call.topic)}, ${dayFormat(call.date)}: ${fmt(call.words)} words`)
+    .on("click", (event, call) => { event.stopPropagation(); pickCall(call); })
+    .on("keydown", (event, call) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickCall(call); } })
+    .on("mouseenter", (event, call) => { if (state === "wave") setHudLine(call); })
+    .on("mouseleave", () => { if (state === "wave") setHudLine(); });
+
+  bars.each(function (call) { call.segments = waveSegments(call); });
+  bars.append("rect").attr("class", "hit")                           // an invisible click target, a little larger than the bar
+    .attr("y", call => call.segments[above.length - 1].y - 14)
+    .attr("height", call => d3.sum(call.segments, s => s.height + 1) + 28);
+  bars.append("g").attr("class", "segs")                             // squashed flat onto the midline until the bars grow
+    .attr("transform", grow ? "scale(1,0.001)" : "scale(1,1)")
+    .selectAll("rect").data(call => call.segments).join("rect")
+      .attr("class", s => "seg t" + s.type)
+      .attr("y", s => s.y).attr("height", s => s.height);
+  bars.append("text").attr("class", "wvalue")                        // the call's length in words, shown once bars are wide enough
+    .attr("y", call => call.segments[above.length - 1].y - 6)
+    .text(call => fmt(call.total));
+
+  waveWorld.append("g").attr("class", "wdetail")                     // leaders from the call in focus to its lines of talk
+    .selectAll("line").data(d3.range(keys.length)).join("line");
+  const cue = waveWorld.select(".wdetail").append("g").attr("class", "cue");   // and the cue: a bracket with text across it
+  cue.append("path");
+  cue.append("text").text(callCue);
+  linesBox.classed("shown", false).selectAll("p").data(d3.range(keys.length)).join("p");
+  hud.classList.remove("with-lines");
+
+  // Scrolling, pinching and dragging stretch the row sideways. d3.zoom keeps track of the
+  // gesture; only its sideways part is used, in drawWave().
+  WV.zoom = d3.zoom()
+    .scaleExtent([1, Math.max(1, 72 / slotWidth)])
+    .extent([[0, 0], [W, H]]).translateExtent([[0, 0], [W, H]])
+    .filter(event => !busy && (state === "wave" || state === "wave-focus") && (!event.ctrlKey || event.type === "wheel") && !event.button)
+    .on("zoom", event => { zoomT = event.transform; drawWave(); });
+  waveSvg.call(WV.zoom).on("dblclick.zoom", null);
+  waveSvg.call(WV.zoom.transform, zoomT);                            // also draws everything once
+
+  if (grow) {
+    busy = true;
+    const sweep = 500 / WV.calls.length;                             // the bars rise one after another, left to right
+    waveWorld.selectAll(".segs").transition().duration(ms(650)).delay((call, i) => ms(120 + i * sweep))
+      .ease(d3.easeCubicOut).attr("transform", "scale(1,1)");
+    d3.timeout(() => { busy = false; }, ms(900));
+  }
+}
+
+// Place everything sideways for the current stretch. Runs on every zoom step.
+function drawWave() {
+  const x = zoomT.rescaleX(WV.x);                                    // slot number -> pixels, stretched and shifted
+  const slotWidth = x(1) - x(0), barWidth = clamp(slotWidth * 0.72, 1, 44);
+  WV.barWidth = barWidth;
+  waveWorld.selectAll(".wbar").attr("transform", call => `translate(${call.cx = x(call.slot + 0.5)},${WV.mid})`);
+  waveWorld.selectAll(".wbar .seg").attr("x", -barWidth / 2).attr("width", barWidth);
+  waveWorld.selectAll(".wbar .hit").attr("x", -slotWidth / 2).attr("width", slotWidth);
+  waveWorld.selectAll(".wvalue").style("opacity", call => (slotWidth >= 34 || call === waveFocused ? 1 : 0));
+  waveWorld.selectAll(".topic")                                      // names show once the gap is wide enough to hold them
+    .attr("transform", topic => `translate(${topic.cx = x(topic.slot - WV.gap / 2) + 4},${WV.mid - 6}) rotate(-90)`)
+    .style("opacity", WV.gap * slotWidth >= 14.5 ? 1 : 0);
+  if (waveFocused) placeCallDetail();
+}
+
+// ===========================================================================
+// 10. ONE CALL IN FOCUS, AND THE ZOOM TO WHITE
+// First click on a call: focus (the row stretches, and lines from the call appear).
+// Second click on it: zoom into its white segment until the page is white.
+// ===========================================================================
+function pickCall(call) {
+  if (busy) return;
+  if (state === "wave-focus" && waveFocused === call) zoomToWhite(call);
+  else if (state === "wave" || state === "wave-focus") focusCall(call);
+}
+
+function focusCall(call) {
+  state = "wave-focus";
+  waveFocused = call;
+  setHudLine();
+  waveWorld.classed("has-focus", true);
+  waveWorld.selectAll(".wbar").classed("is-focused", other => other === call);
+  waveWorld.selectAll(".wdetail line").data(call.segments);
+  writeLines(call);                                                  // shares and type names at once ...
+  linesBox.classed("shown", true);
+  loadLines(call).then(() => {                                       // ... and the callers' words as soon as the file arrives
+    if (waveFocused !== call) return;
+    writeLines(call);
+    setHudLine();
+    placeCallDetail();
+  });
+  // Stretch the row until a slot is 56px wide (or keep the current stretch if it is wider),
+  // and slide it so the call sits left of centre, leaving room for its lines.
+  const k = Math.max(zoomT.k, WV.focusZoom);
+  const screenX = W < 700 ? 0.22 : 0.36;
+  const target = d3.zoomIdentity.translate(screenX * W - k * WV.x(call.slot + 0.5), 0).scale(k);
+  waveSvg.transition("stretch").duration(ms(700)).call(WV.zoom.transform, target);
+}
+
+// ---------------------------------------------------------------------------
+// The lines of talk. Each call has its own file, holding every utterance word by
+// word. From it we pick one example line per sentence type:
+//   - response tokens: the wording used most often in the call ("yeah", "uh-huh");
+//   - every other type: the utterance whose length is the median for that type in
+//     the call, so it is neither a long nor a short example. Ties go to the earlier one.
+// ---------------------------------------------------------------------------
+const linesBox = d3.select("#lines");
+const responseType = 4;
+
+// Fetch the call's file once and keep what was picked on the call's own row.
+function loadLines(call) {
+  if (!call.loading) {
+    call.loading = d3.json(`${callFolder}${call.conversation_no}.json`)
+      .then(conversation => { call.conversation = conversation; call.picked = pickLines(conversation); },
+            () => { call.picked = null; });                          // no file: the type names stay in place
+  }
+  return call.loading;
+}
+
+function pickLines(conversation) {
+  // An utterance is cut into pieces when the other speaker comes in halfway. Pieces share an id; join them back together.
+  const utterances = new Map();
+  for (const turn of conversation.turns) {
+    for (const piece of turn.u) {
+      if (!utterances.has(piece.id)) utterances.set(piece.id, { type: keys.indexOf("stw_" + piece.st), words: [] });
+      utterances.get(piece.id).words.push(...piece.w);               // each word is a pair: [the word, its class]
+    }
+  }
+  return types.map((type, i) => {
+    const group = [...utterances.values()].filter(u => u.type === i && u.words.length);
+    if (!group.length) return null;
+    if (i === responseType) {
+      const wording = u => u.words.map(word => word[0]).join(" ").toLowerCase();
+      const [commonest, count] = d3.greatest(d3.rollups(group, same => same.length, wording), entry => entry[1]);
+      return { words: group.find(u => wording(u) === commonest).words, count, of: group.length };
+    }
+    const median = d3.median(group, u => u.words.length);
+    return { words: d3.least(group, u => Math.abs(u.words.length - median)).words };
+  });
+}
+
+// Fill the five paragraphs for a call: its share of each type, then the picked line with its
+// disfluent words colored by kind, or the type's name while there is no line to show.
+function writeLines(call) {
+  hud.classList.toggle("with-lines", !!call.picked);
+  linesBox.selectAll("p").data(call.segments).each(function (s) {
+    const p = d3.select(this).html("");
+    p.append("span").attr("class", "pct").text(pct(s.share));
+    const line = call.picked && call.picked[s.type];
+    if (!line) return p.append("span").text(types[s.type].short);
+    writeWords(p, line.words);
+    if (line.count) p.append("span").attr("class", "count").text(`${line.count} of ${line.of} response tokens`);
+  });
+}
+
+// Write a line of talk in quotation marks, one <span> per word, with each disfluent word in the color of its kind.
+function writeWords(into, words) {
+  into.append("span").text("“");
+  words.forEach(([word, kind], i) => {
+    const css = kind === "fp" ? (/^um/i.test(word) ? "w-um" : "w-uh") : { rp: "w-rp", et: "w-et", fr: "w-fr" }[kind];
+    into.append("span").attr("class", css ?? null).text(word);
+    into.append("span").text(i < words.length - 1 ? " " : "”");
+  });
+}
+
+// Put each line level with its segment, to the right of the call in focus, and tie the two with a leader.
+function placeCallDetail() {
+  const call = waveFocused, edge = call.cx + WV.barWidth / 2, left = edge + 14;
+  const paragraphs = linesBox.selectAll("p").style("left", left + "px").style("max-width", Math.max(140, Math.min(430, W - left - 12)) + "px");
+  // Top to bottom, each line starts level with its segment, or just under the line before it.
+  // If the last one would run off the screen, the lines are pushed back up from the bottom.
+  const order = d3.sort(paragraphs.nodes().map(node => ({ node, s: d3.select(node).datum(), height: node.offsetHeight })), item => item.s.mid);
+  let floor = -Infinity;
+  for (const item of order) { item.top = Math.max(WV.mid + item.s.mid - 9, floor); floor = item.top + item.height + 5; }
+  let ceiling = H - 8;
+  for (const item of order.slice().reverse()) { item.top = Math.min(item.top, ceiling - item.height); ceiling = item.top - 5; }
+  for (const item of order) { item.node.style.top = item.top + "px"; item.s.at = item.top + 9; }
+  waveWorld.selectAll(".wdetail line")
+    .attr("x1", edge + 2).attr("y1", s => WV.mid + s.mid).attr("x2", edge + 10).attr("y2", s => s.at);
+  // The cue: a bracket as tall as the call's bar, in the gap on its left, with the text across its middle.
+  const bracketX = call.cx - WV.barWidth / 2 - 8;
+  const top = WV.mid + d3.min(call.segments, s => s.y), bottom = WV.mid + d3.max(call.segments, s => s.y + s.height);
+  waveWorld.select(".cue path").attr("d", `M${bracketX + 5},${top}H${bracketX}V${bottom}H${bracketX + 5}`);
+  waveWorld.select(".cue text").attr("transform", `translate(${bracketX},${(top + bottom) / 2}) rotate(-90)`);
+  // Calls and topic names that would sit under the lines step out while this call is in focus.
+  const right = left + d3.max(order, item => item.node.offsetWidth) + 10;
+  waveWorld.selectAll(".wbar").classed("is-covered", other => other !== call && other.cx > call.cx && other.cx - WV.barWidth / 2 < right);
+  waveWorld.selectAll(".topic").filter(topic => topic.cx > call.cx && topic.cx - 12 < right).style("opacity", 0);
+}
+
+function unfocusCall() {
+  state = "wave";
+  waveFocused = null;
+  waveWorld.classed("has-focus", false);
+  waveWorld.selectAll(".is-focused").classed("is-focused", false);
+  waveWorld.selectAll(".is-covered").classed("is-covered", false);
+  linesBox.classed("shown", false);
+  hud.classList.remove("with-lines");
+  setHudLine();
+  resetWaveZoom(700);
+}
+
+function resetWaveZoom(duration) {
+  waveSvg.transition("stretch").duration(ms(duration)).call(WV.zoom.transform, d3.zoomIdentity);
+}
+
+// Second click: the camera goes into the call's white segment until the page is white.
+// By the time the page has turned white the call's file is already here, so the call can be drawn at once.
+function zoomToWhite(call) {
+  busy = true;
+  waveSvg.interrupt("stretch");
+  const s = call.segments.find(s => s.type === inkType);             // the white segment, just below the midline
+  WV.dive = [call.cx, WV.mid + s.mid, Math.min(WV.barWidth, s.height * W / H) * 0.8];
+  waveWorld.classed("zooming", true);
+  linesBox.classed("shown", false);
+  hud.classList.add("faded");
+  flyWave(homeView(), WV.dive, 1300).on("end", () => {
+    state = "call";
+    document.body.classList.remove("black");
+    waveSvg.style("display", "none");
+    document.querySelector("#call").hidden = false;
+    hud.classList.add("on-call");
+    hud.classList.remove("faded");
+    callSvg.selectAll("*").remove();
+    setHudLine();
+    loadLines(call).then(() => {                                     // the file was fetched when the call came into focus,
+      busy = false;                                                  // so this is nearly always immediate
+      if (state === "call" && waveFocused === call) drawCall(true);
+    });
+  });
+}
+
+// The waveform's own camera, used only for the zoom to white and back.
+function flyWave(from, to, duration) {
+  const path = d3.interpolateZoom(from, to);
+  return waveWorld.transition("fly").duration(ms(duration)).ease(d3.easeCubicInOut)
+    .attrTween("transform", () => t => transformOf(path(t)));
+}
+
+function leaveCall() {
+  if (busy || state !== "call") return;
+  hideSay();
+  document.querySelector("#call").hidden = true;
+  hud.classList.remove("on-call");
+  document.body.classList.add("black");
+  waveSvg.style("display", null);
+  if (waveStale) {                                                   // the window changed size meanwhile: redraw the waveform, no animation
+    waveStale = false;
+    return buildWave(false);
+  }
+  busy = true;
+  state = "wave-focus";
+  setHudLine();
+  hud.classList.add("faded");
+  flyWave(WV.dive, homeView(), 1100).on("end", () => {
+    waveWorld.attr("transform", null).classed("zooming", false);
+    linesBox.classed("shown", true);
+    hud.classList.remove("faded");
+    busy = false;
+  });
+}
+
+// Back to the umbrella screen: the page turns white again and the camera pulls out of the black segment.
+function leaveWave() {
+  waveSvg.style("display", "none");
+  document.body.classList.remove("black");
+  svg.style("visibility", null);
+  if (stageStale) { state = "umbrellas"; focused = null; build(); }  // the window changed size meanwhile: redraw, no animation
+  else toUmbrellas(1200);
+}
+
+// ===========================================================================
+// 11. ONE CALL, UTTERANCE BY UTTERANCE
+// The call is laid out like lines of text. Words run left to right and wrap
+// onto as many rows as needed; each row has two strands, one per speaker.
+// On a strand, a bar is an utterance (as long as its words) and a stretch of
+// coiled cord is that speaker waiting while the other one talks.
+// ===========================================================================
+const callSvg = d3.select("#call-svg"), sayBox = d3.select("#say");
+let pinned = false;                                                  // true while a bubble was opened by a click (for touch screens)
+
+// Short names for the corpus's dialog acts (the SWBD-DAMSL tags). Only the names are ours.
+const actNames = {
+  "sd": "statement", "sv": "opinion", "b": "backchannel", "aa": "agreement", "%": "abandoned or unclear", "ba": "appreciation",
+  "qy": "yes-no question", "qy^d": "yes-no question, as a statement", "qw": "wh- question", "qw^d": "wh- question, as a statement",
+  "qo": "open question", "qh": "rhetorical question", "qrr": "or- question", "^g": "tag question", "ny": "yes answer", "nn": "no answer",
+  "na": "affirmative answer", "ng": "negative answer", "no": "other answer", "arp_nd": "dispreferred answer", "ar": "rejection",
+  "aap_am": "partial acceptance or maybe", "bk": "acknowledgement", "bh": "backchannel as a question", "bf": "summing up",
+  "b^m": "repeating the other's phrase", "^2": "completing the other's sentence", "br": "signalling non-understanding", "h": "hedge",
+  "^h": "holding before an answer", "^q": "quotation", "ad": "request or instruction", "oo_co_cc": "offer or commitment",
+  "fc": "closing", "fp": "opening", "ft": "thanks", "fa": "apology", "bd": "downplaying", "t1": "talking to oneself",
+  "t3": "talking to someone else", "fo_o_fw_by_bc": "other", "x": "non-verbal"
+};
+
+function drawCall(grow) {
+  const call = waveFocused, conversation = call.conversation;
+  setHudLine();                                                      // set the heading text first: the layout measures it
+  W = window.innerWidth;
+  H = window.innerHeight;
+  hideSay();
+  callSvg.selectAll("*").remove();
+  const side = clamp(W * 0.07, 20, 90), top = hud.offsetHeight + 22 + 30, bottom = H - 24;
+
+  const note = document.querySelector("#call-note");
+  note.hidden = !!conversation;
+  if (!conversation) {                                               // no file for this call: say so, and leave it there
+    note.style.top = top + "px";
+    note.textContent = `This call's own file (${callFolder}${call.conversation_no}.json) could not be read, so there is nothing to draw. ` +
+      "The page has to be opened through a web server, with the conversations folder beside it. Click anywhere to go back.";
+    return;
+  }
+
+  // 1. Every piece of talk, in the order spoken, with where it starts and ends along the call, counted in words.
+  const spans = [];
+  let at = 0;
+  for (const turn of conversation.turns) {
+    for (const piece of turn.u) {
+      if (!piece.w.length) continue;                                 // laughter and other noises carry no words
+      spans.push({ speaker: turn.s, start: at, end: at += piece.w.length, piece, type: keys.indexOf("stw_" + piece.st) });
+    }
+  }
+  const total = at;
+  const wholeUtterance = d3.rollup(spans, pieces => pieces.flatMap(s => s.piece.w), s => s.piece.id);
+
+  // 2. Each speaker's waits: the stretches where the other one is talking.
+  const waits = [];
+  for (const speaker of ["A", "B"]) {
+    let from = 0;
+    for (const s of spans) {
+      if (s.speaker !== speaker) continue;
+      if (s.start > from) waits.push({ speaker, start: from, end: s.start });
+      from = s.end;
+    }
+    if (from < total) waits.push({ speaker, start: from, end: total });
+  }
+
+  // 3. Rows. A word is at most 12px wide; that sets how many rows the call needs. If they would not
+  //    all fit on screen, use as many rows as do fit and let the words get narrower.
+  const width = W - 2 * side;
+  const fits = Math.max(1, Math.floor((bottom - top) / (W < 700 ? 30 : 40)));
+  const rows = clamp(Math.ceil(total * 12 / width), 1, fits);
+  const perRow = total / rows, perWord = width / perRow;             // words on a row; pixels per word
+  const pitch = Math.min((bottom - top) / rows, 96);                 // distance from one row to the next
+  const laneHeight = clamp(pitch * 0.25, 6, 18), laneGap = laneHeight * 0.5;
+  const laneTop = (row, speaker) => top + row * pitch + (speaker === "A" ? 0 : laneHeight + laneGap);
+
+  // Cut a stretch of the call into the part that falls on each row.
+  const cut = stretch => {
+    const parts = [];
+    for (let row = Math.floor(stretch.start / perRow); row < rows && row * perRow < stretch.end; row++) {
+      const a = Math.max(stretch.start, row * perRow), b = Math.min(stretch.end, (row + 1) * perRow);
+      if (b > a) parts.push({ stretch, row, x0: side + (a - row * perRow) * perWord, x1: side + (b - row * perRow) * perWord });
+    }
+    return parts;
+  };
+  const appear = part => ms(100 + 1000 * (part.stretch.start / total));  // things appear in the order spoken
+
+  // 4. Draw: lane names, then the cords, then the bars.
+  callSvg.append("g").selectAll("text").data(d3.cross(d3.range(rows), ["A", "B"])).join("text")
+    .attr("class", "lane-name").attr("x", side - 7).attr("y", ([row, speaker]) => laneTop(row, speaker) + laneHeight / 2)
+    .text(([row, speaker]) => speaker);
+
+  callSvg.append("g").selectAll("path").data(waits.flatMap(cut)).join("path")
+    .attr("class", "wait")
+    .attr("d", part => spring(part.x0 + 1, part.x1 - 1, laneTop(part.row, part.stretch.speaker) + laneHeight / 2, laneHeight * 0.36, clamp(laneHeight * 0.4, 3, 6)))
+    .style("opacity", grow ? 0 : null)
+    .transition().duration(ms(300)).delay(appear).style("opacity", null);
+
+  callSvg.append("g").selectAll("rect").data(spans.flatMap(cut)).join("rect")
+    .attr("class", part => (part.stretch.type < 0 ? "piece untyped" : "piece seg t" + part.stretch.type))
+    .attr("x", part => part.x0).attr("y", part => laneTop(part.row, part.stretch.speaker))
+    .attr("width", part => Math.max(1, part.x1 - part.x0 - (part.x1 - part.x0 > 3 ? 1 : 0)))
+    .attr("height", laneHeight)
+    .on("mouseenter", function (event, part) { pinned = false; say(part.stretch, this); })
+    .on("mouseleave", () => { if (!pinned) hideSay(); })
+    .on("click", function (event, part) { event.stopPropagation(); say(part.stretch, this); pinned = true; })
+    .style("opacity", grow ? 0 : null)
+    .transition().duration(ms(300)).delay(appear).style("opacity", null);
+
+  // Mark where the transcript stops, so that a call that ends mid-sentence does not look cut off by the page.
+  const last = cut(spans[spans.length - 1]).pop(), endTop = laneTop(last.row, "A"), endBottom = laneTop(last.row, "B") + laneHeight;
+  const endMark = callSvg.append("g").attr("class", "end-mark");
+  endMark.append("line").attr("x1", last.x1 + 2.5).attr("x2", last.x1 + 2.5).attr("y1", endTop).attr("y2", endBottom + 5);
+  endMark.append("text").attr("x", last.x1 + 2.5).attr("y", endBottom + 14)
+    .attr("text-anchor", last.x1 > side + 130 ? "end" : "start").text("Transcript ends");
+  endMark.style("opacity", grow ? 0 : null).transition().duration(ms(300)).delay(ms(1150)).style("opacity", null);
+
+  // The bubble: who is speaking, the sentence type, the dialog act, then the whole utterance in its own words.
+  function say(span, node) {
+    callSvg.classed("pointing", true).selectAll(".piece").classed("on", part => part.stretch.piece.id === span.piece.id);
+    const who = span.speaker === "A" ? "Caller A" : "Answerer B";
+    const type = span.type < 0 ? "no type" : types[span.type].short;
+    sayBox.html("").property("hidden", false);
+    sayBox.append("p").attr("class", "who").text(`${who} · ${type} · ${actNames[span.piece.tag] ?? span.piece.tag}`);
+    writeWords(sayBox.append("p"), wholeUtterance.get(span.piece.id));
+    // Under the bar if there is room, otherwise above it; never off the side of the screen.
+    const bar = node.getBoundingClientRect(), box = sayBox.node();
+    const under = bar.bottom + 8 + box.offsetHeight < H - 8;
+    sayBox.style("left", clamp(bar.left, 12, W - box.offsetWidth - 12) + "px")
+          .style("top", (under ? bar.bottom + 8 : bar.top - 8 - box.offsetHeight) + "px");
+  }
+}
+
+function hideSay() {
+  pinned = false;
+  sayBox.property("hidden", true);
+  callSvg.classed("pointing", false).selectAll(".on").classed("on", false);
+}
+
+// A coiled cord along a straight line from x0 to x1: a point moves steadily to the right while going
+// round a small circle, which draws one loop per turn. pitch is the distance between loops.
+function spring(x0, x1, y, radius, pitch) {
+  const length = x1 - x0;
+  if (length < 2) return null;
+  const loops = Math.max(1, Math.round(length / pitch)), steps = loops * 12, points = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * loops * 2 * Math.PI;
+    points.push([x0 + (i / steps) * length + radius * 0.7 * Math.sin(angle), y - radius * Math.cos(angle)]);
+  }
+  return d3.line().curve(d3.curveBasis)(points);
+}
+
+// ===========================================================================
+// 12. THE INFO PANEL
+// The text of the panel is in the HTML near the top of this file. Here it is
+// opened and closed, and the list of umbrellas is written from the same table
+// the bars are built from, so the two cannot drift apart.
+// ===========================================================================
+const infoButton = document.querySelector("#info-button");
+const infoPanel = document.querySelector("#info"), infoBackdrop = document.querySelector("#info-backdrop");
+
+function showInfo(open) {
+  infoPanel.hidden = infoBackdrop.hidden = !open;
+  infoButton.setAttribute("aria-expanded", open);
+  infoButton.textContent = open ? "×" : "i";
+}
+infoButton.addEventListener("click", () => showInfo(infoPanel.hidden));
+infoBackdrop.addEventListener("click", () => showInfo(false));          // a click outside the panel only closes it
+
+d3.select("#info-umbrellas").selectAll("li").data(Object.entries(umbrellas)).join("li").each(function ([name, topics]) {
+  d3.select(this).append("b").text(name + ": ");
+  d3.select(this).append("span").text(topics.map(topicName).sort(d3.ascending).join(", "));
+});
+
+function debounce(fn, wait) {
+  let timer;
+  return () => { clearTimeout(timer); timer = setTimeout(fn, wait); };
+}
+</script>
+</body>
+</html>

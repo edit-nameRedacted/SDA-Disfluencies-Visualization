@@ -1,0 +1,8 @@
+* text=auto eol=lf
+# CSV files are kept byte for byte as extract_swda.py writes them (CRLF line ends)
+*.csv -text
+*.xlsx binary
+*.jpg binary
+*.png binary
+*.blend binary
+*.zip binary

@@ -1,0 +1,74 @@
+{
+  "word_classes": {
+    "p": "plain",
+    "cj": "utterance-linking conjunction {C}",
+    "dm": "discourse marker {D} other than you know",
+    "ij": "interjection such as oh/huh {F}",
+    "yk": "you know, as a discourse marker {D you know}",
+    "as": "aside {A}",
+    "fp": "filled pause (uh, um)",
+    "et": "editing term {E}",
+    "rp": "reparandum (replaced by a repair)",
+    "fr": "word fragment outside a reparandum"
+  },
+  "disfluent_word_classes": [
+    "fp",
+    "et",
+    "rp",
+    "fr",
+    "yk"
+  ],
+  "markup_type": "nonverbal > abandoned > disfluent > backchannel > fluent (first match wins)",
+  "sentence_type": "Treebank-based, parsed conversations only: complete_fluent, complete_disfluent, unfinished, response_token, fragment. parse_type is the type read off the parse; sentence_type is that type after the three utterance-level rules in refine_sentence_type",
+  "count_columns": {
+    "words": "all words",
+    "utterances": "dialog-act units",
+    "disfluent_words": "fp + et + rp + fr + yk",
+    "w_<class>": "words in that class",
+    "uh / um": "filled pauses by form",
+    "repairs": "number of [ ... + ... ] repairs opened",
+    "utt_with_disfluency": "utterances with a disfluent word or any part of a repair",
+    "utt_with_filled_pause": "utterances with at least one filled pause",
+    "utt_abandoned": "abandoned (-/) or tagged %",
+    "utt_overlap": "utterances containing an overlap mark (#)",
+    "utt_closing": "utterances tagged conventional closing (fc)",
+    "mt_<type> / mtw_<type>": "utterances / words by markup_type",
+    "st_<type> / stw_<type>": "utterances / words by sentence_type (blank type excluded)"
+  },
+  "speakers": "A is the caller who placed the call (from_caller), B the one who answered",
+  "levels": "words count in the turn where spoken; utterance counts in the turn where the utterance starts; turns sum exactly to their conversation",
+  "turns_csv": {
+    "order": "position of the turn in the conversation (0-based)",
+    "pieces": "utterance pieces in the turn",
+    "continues_previous": "1 if the turn opens by continuing an earlier utterance",
+    "has_disfluency / abandoned": "judged from this turn's own words and marks"
+  },
+  "conversation_json": {
+    "counts": "conversation totals: words, utterances, turns, disfluent words, mtw / stw = words by markup_type / sentence_type",
+    "turns[]": {
+      "t": "turn number",
+      "i": "turn order",
+      "s": "speaker",
+      "n": "words",
+      "d": "disfluent words",
+      "fp": "filled pauses",
+      "rep": "repairs",
+      "dis": "1 if the turn has a disfluency",
+      "ab": "1 if the turn has an abandoned utterance",
+      "mtw": "words by markup_type",
+      "stw": "words by sentence_type",
+      "u": "utterance pieces, in spoken order"
+    },
+    "turns[].u[]": {
+      "id": "utterance id (= order in utterances.csv)",
+      "c": "1 if this piece continues an utterance from an earlier turn",
+      "tag": "collapsed dialog act",
+      "n": "words in this piece",
+      "d": "disfluent words in this piece",
+      "mt": "markup_type of the whole utterance",
+      "st": "sentence_type of the whole utterance, or null",
+      "ov": "1 if the utterance has an overlap mark",
+      "w": "[token, class] pairs in spoken order"
+    }
+  }
+}
