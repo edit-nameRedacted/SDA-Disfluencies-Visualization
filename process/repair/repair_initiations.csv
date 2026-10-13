@@ -1,0 +1,187 @@
+conversation_no,utterance,speaker,act_tag,rule,strength,fired_on,trouble_utterance,trouble,initiation,repair_utterance,repair,repair_repeats_share
+2020,84,A,br,R1 tag,strong,br,83,jimi hendrix was the original,who,85,jimi hendrix was the original,1.0
+2032,247,B,br,R1 tag,strong,br,246,so,about music,248,no,
+2035,3,B,br,R1 tag,strong,br,2,have you all been able to do much as a family these days,pardon me,4,have you all been able to do much as uh as a full family these days all of you,0.833
+2039,146,A,br,R1 tag,strong,br,143,oh we're not even supposed to be talking about this though are we,how did i hear about it,149,uh-huh,0.0
+2041,205,A,br,R1 tag,strong,br,204,or they're older,pardon me,206,well don't you think they tend to be older in the rural ar-,0.25
+2041,247,B,br,R1 tag,strong,br,246,am i actually,what's that,248,i as am i,
+2060,86,B,br,R1 tag,strong,br,85,you would be surprised,huh,87,they just come by and pick them up even if it's just for the tv you know t- uh selections of the day,0.0
+2061,39,A,br,R1 tag,strong,br,38,shoot man it's what midnight almost,what,44,yeah,
+2061,87,B,br,R1 tag,strong,br,86,and that's about it,two hundred fifty,88,yeah,
+2061,138,B,br,R1 tag,strong,br,137,but uh but what if they pay for it,excuse me,139,what if they pay for,1.0
+2061,320,A,br,R1 tag,strong,br,319,they are out of korea right,what,321,leading edge,0.0
+2061,401,A,br,R1 tag,strong,br,400,like the deal,what,405,like a hologram,0.0
+2072,168,A,br,R1 tag,strong,br,167,i didn't see that many of them,horses,169,yes,
+2092,42,B,br,R1 tag,strong,br,41,argentina,argentina,43,yeah,
+2139,170,A,qy,R3 repeat,candidate,aspen,169,except we call it aspen,aspen,171,yes,
+2160,3,B,br,R1 tag,strong,br,2,did i reach the dallas area,i beg your pardon,4,did i reach the dallas area,1.0
+2187,200,B,br,R1 tag,strong,br,199,a chocolate powder,unsweetened,201,yeah,
+2220,69,B,br,R1 tag,strong,br,68,oh so do i,what's that,70,forgot about that,0.0
+2220,71,B,br,R1 tag,strong,br,70,forgot about that,what's that,72,i said so do i,0.0
+2220,109,A,br,R1 tag,strong,br,108,oh i see what you're saying,huh,110,yeah,
+2226,229,A,br,R1 tag,strong,br,228,that's one i liked,what,230,dead zone,0.0
+2252,57,A,^2,R3 repeat,candidate,expend,56,and you know i even had a thought once that the whole iraqi thing might have been just a a deal to go ahead and let us uh you know expend some some military hardware,expend,58,of course it didn't turn out that way,0.0
+2260,216,B,qy,R3 repeat,candidate,lubbock,215,my wife uh she went to uh the school out there in lubbock,in lubbock,217,she was there for two or three years before we got married,0.0
+2279,236,B,br,R1 tag,strong,br,235,what are you learning to be,oh oh excuse me,237,what degree i mean what are you wanting to do after you get out of college,0.0
+2304,30,B,br,R1 tag,strong,br,29,you serve that yourself or the for a family,excuse me,31,you ever serve that yourself when you have company,0.5
+2305,191,A,br,R1 tag,strong,br,190,what branch were you in,huh,192,what branch were you in,1.0
+2305,209,A,br,R1 tag,strong,br,208,were you in sac,in tak,210,sac,1.0
+2334,172,B,bh,R3 repeat,candidate,cash,171,i i uh i just went out and got a new v c r yesterday with cash,with cash,173,and it it's,
+2334,238,B,qw,R2 open,candidate,what's that,237,n c state,what's that,239,uh north carolina state,0.333
+2334,244,A,br,R1 tag,strong,br,243,so where are you,where am i,245,yeah,
+2397,44,A,qw,R2 open,candidate,what's that,43,and then i got into the bargello,oh what's that,45,well it's an italian um needlework using using the uh,0.0
+2465,50,B,br,R1 tag,strong,br,49,oh,huh,51,defense systems and electronics group,0.0
+2465,125,A,br,R1 tag,strong,br,124,so,what's that,126,he doesn't have one of those,0.0
+2466,131,B,br,R1 tag,strong,br,130,is it,pardon me,137,um,
+2472,62,B,br,R1 tag,strong,br,61,what do you serve with it,huh,63,what do you serve with it,1.0
+2472,78,B,qw,R2 open,strong,what,77,i've got a good dessert recipe,oh what,79,uh do you like angel food cake,0.0
+2479,204,B,qy^d,R3 repeat,candidate,plano,203,in plano,plano,205,yeah,
+2485,131,B,qw,R2 open,strong,huh,130,but you know what you can do,huh,132,a lot of these lakes and things if you could find a centrally located like say about the same distance for all of you all to come,0.0
+2492,29,A,br,R1 tag,strong,br,28,uh dursban two,pardon,30,a chemical called dursban two,0.5
+2492,69,B,qy,R4 check,candidate,you said you had problems with fleas last year in the yard,66,so it anyway,you said you had problems with fleas last year in the yard,70,right,
+2492,162,A,br,R1 tag,strong,br,161,southwest southwest side of houston,southwest where,163,southwest houston,1.0
+2499,148,A,qy,R3 repeat,candidate,cat dog real,147,and it was a real dog and cat,a real dog and cat,150,and all the other animals,0.0
+2499,170,B,br,R1 tag,strong,br,169,th- that sounds a lot like a walt disney film,huh,171,sounds a lot a like a walt disney film,1.0
+2503,28,A,br,R1 tag,strong,br,27,is she,i beg your pardon,29,what is she,
+2510,74,B,bh,R3 repeat,candidate,five,73,five,five,75,she's a real,0.0
+2521,7,B,qw,R2 open,candidate,what's that,6,and i want to tell you something,what's that,8,they're going to go somewhere pretty shortly,0.0
+2533,213,B,qy,R3 repeat,candidate,children twelve,212,and they have twelve children,twelve children,214,she has twelve children,1.0
+2548,171,A,br,R1 tag,strong,br,170,would you ever buy a used car for a new car for yourself,buy a wha- ar- you buy a used car,172,like,
+2549,231,A,qy^d,R3 repeat,candidate,delaware,230,i i uh i transferred to delaware and graduated there,delaware,232,yeah,
+2559,22,A,qy,R3 repeat,candidate,office open,21,something that i feel is a is a pretty much an invasion of privacy is something that's really so common that it's accepted as the norm now is the op- the open office concept,the open office,23,uh-huh,0.0
+2565,9,B,br,R1 tag,strong,br,8,so wally moon moon shots and all that,what's that,10,yeah,
+2565,93,B,br,R1 tag,strong,br,92,and,uh who's the last one,94,bobby ojeda,0.0
+2602,86,A,qy,R4 check,candidate,you mean in the in the most recent conflict,85,didn't it bug you a little bit why they kept coming up with all this stuff,you mean in the in the most recent conflict,87,in any of them since eighty-one,0.0
+2603,173,B,qw,R2 open,strong,what,172,i mean,what,175,yeah,
+2608,27,A,qy,R3 repeat,candidate,cayenne,26,is it cayenne pepper you mean,cayenne,28,yes,
+2608,323,B,bh,R3 repeat,candidate,can,322,you can even make it with chicken or you can make it with seafood,oh you can,324,uh-huh,0.0
+2609,63,B,br,R1 tag,strong,br,62,uh it is in australia for example,is that true,64,yeah,
+2615,106,A,br,R1 tag,strong,br,105,the availability,huh,107,you mean the diesel availability,0.5
+2615,107,B,qy,R4 check,candidate,you mean the diesel availability,106,huh,you mean the diesel availability,108,yeah,
+2641,173,A,bh,R3 repeat,candidate,eel,172,well a friend of mine had um an eel,an eel,174,and then he had a um,
+2645,9,B,br,R1 tag,strong,br,8,any handicrafts,excuse me,10,any handicrafts,1.0
+2650,318,B,qy,R3 repeat,candidate,buddy,317,buddy,buddy,319,uh-huh,0.0
+2653,70,B,qy,R3 repeat,candidate,hundred,69,so make it seven hundred,a hundred,71,yeah,
+2667,317,A,br,R1 tag,strong,br,316,well and people of all ages take advantage of the aerobics,hm,318,people of all ages take advantage of the aerobics,1.0
+2691,59,A,bh,R3 repeat,candidate,three,58,i have three in college,three,61,they they usually get back for the at least two of them for the summer,0.0
+2703,226,A,^h,R3 repeat,candidate,game oriole,225,well how like how much is an oriole game,oriole game,229,oh gosh,0.0
+2708,9,B,br,R1 tag,strong,br,8,mean private enterprise,huh,10,have private enter- enterprise do it,1.0
+2708,11,B,br,R1 tag,strong,br,10,have private enter- enterprise do it,you mean the prisons,12,uh-huh,0.0
+2784,96,A,qy,R4 check,candidate,do you mean a a complete reversal because i guess they can't raise that money in those those poorer districts huh,95,we went to sixty-five per cent state funding to sixty-five per cent local funding in a matter of four years and uh i mean,uh do you mean a a complete reversal because i guess they can't raise that money in those those poorer districts huh,97,oh complete complete,0.0
+2785,85,B,br,R1 tag,strong,br,84,and and i have spent the last ten ten years being a florist,being what,86,being a florist,1.0
+2789,3,A,br,R1 tag,strong,br,2,i i yeah i'm yeah i i do aerobics uh step classes and uh toning classes,step classes,4,yes,
+2789,5,A,qw,R2 open,candidate,what's that,4,yes,what's that,6,it's uh it's a new uh form i think,0.0
+2789,271,A,b^m,R3 repeat,candidate,next weekend,270,i plan on getting back once i graduate next weekend,next weekend,272,next weekend,1.0
+2792,267,B,qy,R3 repeat,candidate,colorado springs,266,and colorado springs,and colorado springs,268,yeah,
+2792,282,A,br,R1 tag,strong,br,281,and well you know with the other part of this thing was how do you feel that this influences family,how do i feel what,283,that that books influence,0.0
+2800,74,B,br,R1 tag,strong,br,73,there's no,huh,75,with the american express card from t i there's no um late fee,0.167
+2800,93,B,br,R1 tag,strong,br,92,oh yeah,oh you can,94,you can use it like any other card,0.0
+2819,144,A,br,R1 tag,strong,br,143,are you d a d or something up there,huh,145,are you d a d or something,1.0
+2832,208,B,br,R1 tag,strong,br,207,he'll end up killing himself,pardon,209,end up killing theirselves,0.75
+2836,124,A,br,R1 tag,strong,br,123,did you did you sue him under the civil system,do what now,125,did you sue him under the civil system,1.0
+2877,13,A,br,R1 tag,strong,br,12,it's a mud dog,i beg your pardon,14,it's a mud dog,1.0
+2893,28,B,br,R1 tag,strong,br,27,so what's your motivation,what what's my motivation,29,yeah,
+2893,203,B,br,R1 tag,strong,br,202,you know i,about weight,204,well yeah,
+2913,295,A,br,R1 tag,strong,br,294,but i don't know what it's about,the never ending story,296,yeah,
+2938,6,A,qy,R4 check,candidate,you mean for like smog and stuff,5,um we've actually had some warnings in uh raleigh uh on air pollution,oh you mean for like smog and stuff,7,uh-huh,0.0
+2938,38,B,br,R1 tag,strong,br,37,that's up there by kentucky isn't it,kentucky,39,uh-huh,0.0
+2938,61,A,br,R1 tag,strong,br,60,so uh,oh amarillo,62,uh-huh,0.0
+2956,119,B,bh,R2 open,strong,what,118,that sounds rather crass i think because then then you are saying well uh y-y-you know y- in- y-y it could be c- convoluted in many ways where people would actually uh by paying them,what,121,i mean you know you would take a certain amount off their income tax or property tax or whatever,0.111
+2956,137,A,qy,R4 check,candidate,you mean the special interest groups,136,and these days we are promised hardly anything of substance,oh you mean the special interest groups,138,right,
+2969,103,A,br,R1 tag,strong,br,102,i have probably planted oh around here um maybe six hundred bulbs,of hyacinths,104,no,
+2969,116,B,br,R1 tag,strong,br,115,and we- everybody down here calls these flags uh the irises i guess uh,they call them flags,117,that is what they call them down here,0.5
+2969,279,A,br,R1 tag,strong,br,278,it is sold down here as purple buddy,purple buddy,280,now it's not,0.0
+2970,194,A,br,R1 tag,strong,br,193,i like it a lot,pardon me,195,i like it so far,0.0
+3021,59,A,br,R1 tag,strong,br,58,see in california they in california they make you register when you buy ammunition,pardon,62,you have to sign a you know,0.0
+3038,82,B,br,R1 tag,strong,br,81,and and uh we ended up going to see green card,green card,83,green card,1.0
+3041,60,A,b^m,R3 repeat,candidate,scandalous,59,and that was pretty scandalous,scandalous,61,yeah,
+3049,114,B,br,R1 tag,strong,br,113,i uh i uh,robert de niro,115,robert de niro,0.0
+3051,124,A,br,R1 tag,strong,br,123,and uh cause have you been back to the perry homes back here,um the ones that look like brick houses,125,the one that looks like monopoly apartments,0.0
+3068,26,B,qy,R3 repeat,candidate,parent,25,wh- what what type of advice do you think you'd give to a a parent,to a parent,27,yeah,
+3072,6,A,br,R1 tag,strong,br,5,and that was detroit,detroit,7,yeah,
+3073,131,B,br,R1 tag,strong,br,130,he thought it was not,so he didn't go howl,132,no,
+3075,88,B,br,R1 tag,strong,br,87,oh the the mexican coast,pardon me,89,that's all mexico i think,0.0
+3148,3,B,qy^d,R3 repeat,candidate,plano,2,in plano,in plano,4,yes,
+3182,98,B,br,R1 tag,strong,br,97,oh and it's so nice,beg pardon,99,it must be so nice for you now that you're retired,0.25
+3219,78,B,bf,R4 check,candidate,you mean you don't need to wear little old house dresses any more,77,and she,you mean you don't need to wear little old house dresses any more,79,right,
+3223,92,B,x,R2 open,strong,pardon,91,he's a nice guy,pardon,93,i take it you live in the dallas area,0.0
+3232,77,A,br,R1 tag,strong,br,76,was it a pell grant,i'm sorry what did you say,78,what kind of grant was it,0.5
+3238,46,A,qy,R3 repeat,candidate,two,45,two,two,47,uh-huh,0.0
+3266,127,B,br,R1 tag,strong,br,126,and we just now found her,what,128,they had left her on the bus closed up all afternoon,0.0
+3275,147,B,qw,R2 open,candidate,what's that,146,but this is a extra long one,what's that,148,they're giving us a lot of time,0.0
+3306,20,A,br,R1 tag,strong,br,19,well i heard that's the second happiest day of your life,what's that,21,the day you sell your boat,0.333
+3320,25,A,qw,R3 repeat,candidate,kind,24,what kind of newspaper do you get down there,what kind,26,yeah,
+3333,136,A,qy,R3 repeat,candidate,remember,135,uh i remember seeing that,remember that,137,i saw that on hard copy,0.0
+3345,10,B,br,R1 tag,strong,br,9,where whereabouts in pennsylvania,what,11,where in pennsylvania,1.0
+3349,82,A,br,R1 tag,strong,br,81,i have a huge collection of dolls which is still in new mexico with my parents,in new mexico,83,uh-huh,0.0
+3389,2,A,br,R1 tag,strong,br,1,my favorite team is the pittsburgh steelers,pittsburgh,3,you bet,0.0
+3393,11,A,qy,R3 repeat,candidate,andrews,10,we did an air show out at uh out at uh boone greene no out at uh andrews,andrews,12,yeah,
+3397,4,A,br,R1 tag,strong,br,3,do you follow football very much,i'm sorry what,5,do you follow football very much,1.0
+3397,17,A,br,R1 tag,strong,br,16,well i guess kids are out,what's that,18,kids are out,1.0
+3411,102,A,br,R1 tag,strong,br,101,the one we have has a six,has a little v six,103,uh-huh,0.0
+3417,14,A,aa,R3 repeat,candidate,all going where's,13,and you wonder you know where's it all going,where's it all going,15,and we have such a huge uh national deficit,0.0
+3445,45,A,br,R1 tag,strong,br,44,he's a good actor though,beg your pardon,46,um gene hackman's a good actor i think,0.4
+3476,16,A,br,R1 tag,strong,br,15,and all we do is metric stuff,you're now in what,17,acoustics,0.0
+3491,3,B,qy,R3 repeat,candidate,five,2,well uh city slickers and star trek five,five,4,yeah,
+3497,45,A,br,R1 tag,strong,br,44,i don't think there is any mountains to stop the wind,what's that,46,i don't think there is any mountains to stop the wind,1.0
+3497,115,B,br,R1 tag,strong,br,114,so did you used to ski when you were out here,what's that,116,did you used to ski when you were in utah,0.667
+3506,13,B,br,R1 tag,strong,br,12,yeah,now what is uh what is uh the steamed shellfish you said,14,uh-huh,0.0
+3514,24,A,br,R1 tag,strong,br,23,i have been to europe once and to haiti and uh,tahiti,25,yeah,
+3514,76,B,br,R1 tag,strong,br,75,so that might be fun,a what,77,cooking class you know,0.0
+3523,8,B,br,R1 tag,strong,br,7,increases each year doesn't it,i'm sorry,9,it increases each year i think,0.75
+3523,14,B,^2,R3 repeat,candidate,role,13,well and i think women have kind of had uh in the past the real subservient role,role,16,and uh,
+3524,52,A,qw,R2 open,strong,what,51,and and you know what,what,53,sometimes that's okay,0.0
+3524,169,A,qy,R3 repeat,candidate,change,168,but i have seen lately yes i am seeing i'm seeing a change that whoops government can't do it,a change,171,schools are not able to,0.0
+3526,28,B,br,R1 tag,strong,br,27,what do you use it for,huh,29,what do you use it for,1.0
+3526,90,B,br,R1 tag,strong,br,89,in richardson there,huh,91,in richardson,1.0
+3549,72,A,bh,R3 repeat,candidate,brisket,71,what is brisket,brisket,74,huh,
+3550,62,B,br,R1 tag,strong,br,61,usually avis,to what avis,63,avis,1.0
+3596,67,A,br,R1 tag,strong,br,66,spectacular is the right word for them,pardon me,68,spectacular is a good word for them,0.667
+3606,123,A,br,R1 tag,strong,br,122,so other than that i don't know,what's that,124,guess i'm not much of a t v person really,0.0
+3606,196,A,br,R1 tag,strong,br,195,um five dollars,five dollars a call,197,uh-huh,0.0
+3688,142,A,br,R1 tag,strong,br,141,hope it's a good program there,pardon,143,hope it's a good program there,1.0
+3707,123,A,br,R1 tag,strong,br,122,i think it was like a six week program,every what,124,uh i think it was one night a week for like six weeks,0.5
+3725,3,A,qy,R3 repeat,candidate,every five once years,2,probably once every five years,once every five years,4,uh-huh,0.0
+3725,38,A,br,R1 tag,strong,br,37,do you all just start planning real far ahead of time,pardon,39,uh do you all start planning real far ahead of time,1.0
+3727,137,B,br,R1 tag,strong,br,136,tobogganing,the what,138,you have got to go tobogganing and sledding with them,0.25
+3756,30,B,br,R1 tag,strong,br,29,well how do you get the edge though,how do you get the edge,31,the the straight edge,0.5
+3763,64,B,br,R1 tag,strong,br,63,well what do you think of howse who is the coach for the pitchers,the pitching coach,65,yes,
+3763,85,B,br,R1 tag,strong,br,84,and i'm not fond of grieves,oh tom grieve,86,yeah,
+3821,89,A,b^m,R3 repeat,candidate,thirty-three,88,i'm uh thirty-three,thirty-three,90,thirty-two,0.0
+4013,130,B,br,R1 tag,strong,br,129,i'm trying aberdeen,huh,131,is is that close to dallas,0.0
+4048,19,B,br,R1 tag,strong,br,18,oh they do with alcohol,pardon,20,they do it with alcohol,1.0
+4080,3,B,br,R1 tag,strong,br,2,what's your view,huh,4,what's your view,1.0
+4080,23,A,br,R1 tag,strong,br,22,i've i've lived down here a couple years,oh you're just live down there,25,i'm originally from colorado,0.0
+4092,49,A,bh,R2 open,strong,what,48,i have friends that like that,what,50,yeah,
+4092,102,B,br,R1 tag,strong,br,101,you don't like patsy cline,huh,103,you don't like patsy cline,1.0
+4099,155,A,br,R1 tag,strong,br,154,is that it,heavenly,156,yeah,
+4108,33,A,br,R1 tag,strong,br,32,you know the fam- well the families do not necessarily uh know what to do with them,what do you mean,34,and they don't want to take the responsibility,0.0
+4127,85,B,br,R1 tag,strong,br,84,i don't understand the idea of paying somebody to to do it,huh,86,it seems like it's absurd the number of people who end up having to pay somebody to do it,0.111
+4130,42,B,br,R1 tag,strong,br,41,so uh,yes,43,uh do you think d- you mean do you actually think we're doing enough right now to,0.0
+4137,29,A,b^m,R3 repeat,candidate,-s mustang,28,what about mustang g t -s,mustang g t -s,31,those,
+4149,126,A,br,R1 tag,strong,br,125,they can't afford to have a really good job,who's who's not very well educated,127,the starving ones,0.0
+4150,66,B,br,R1 tag,strong,br,65,but my dad uh,you had eight boys and one girl,67,yeah,
+4152,9,B,br,R1 tag,strong,br,8,lot of lot of interesting procedural things i think would be a good be a good change if we're going to be talking about the subject t- tonight which in some i guess criminal courts the,criminal courts,11,yeah,
+4155,39,A,br,R1 tag,strong,br,38,well when you when you go out into the uh when you go out into the working world it it changes quickly,huh,42,um you look at your paycheck,0.0
+4155,111,A,br,R1 tag,strong,br,110,scientific,huh,112,heavy science,0.0
+4171,111,B,br,R1 tag,strong,br,110,and uh i don't know what they do for those people,mean the the the management they get rid of,112,some of it,0.0
+4175,123,A,br,R1 tag,strong,br,122,paper just seems so innocuous,huh,124,paper doesn't seem threatening at all you know,0.2
+4181,20,B,br,R1 tag,strong,br,19,actually there's no sales tax in new hampshire either,there's no sales tax either,21,no,
+4184,1,B,br,R1 tag,strong,br,0,you have any pets,do i have pets,2,yeah,
+4316,48,B,qy,R4 check,candidate,you mean she taught in a prison,47,and uh,oh you mean she taught in a prison,49,yes,
+4329,6,B,br,R1 tag,strong,br,5,we live in the saginaw area,saginaw,7,uh-huh,0.0
+4339,55,A,br,R1 tag,strong,br,54,is uh traction much of an issue for you up there,traction,60,actually uh pretty good way of looking at it,0.0
+4342,50,B,br,R1 tag,strong,br,49,i mean when did it when did they,oh when did it happen,51,yeah,
+4346,75,A,br,R1 tag,strong,br,74,why is that,huh,76,why is that,
+4372,46,B,qy,R4 check,candidate,do you mean businesses from the point of view as of of selling things to a consumer and then being responsible for the sales tax or purchasing,45,and there r- there are s- some substantial nasty penalties um if you if businesses try to avoid that,uh do you mean businesses from the point of view as of of selling things to a consumer and then being responsible for the sales tax or purchasing,47,i-,
+4378,93,B,br,R1 tag,strong,br,92,so what why is it that the weather in atlanta that gets very hot,huh,94,where you live it gets very hot,0.667
+4618,48,A,br,R1 tag,strong,br,47,are they i mean is there a margin of error,the accuracy,53,yeah,
+4633,2,B,br,R1 tag,strong,br,1,well i have five,you have five,3,right,
+4642,11,A,br,R1 tag,strong,br,10,so do you have a car,pardon,12,do you have a car,1.0
+4649,23,A,qy,R4 check,candidate,you mean learning type yeah i mean actual experiments they would have to get your permission,22,aren't don't they kind of use them for everybody kind of use them for guinea pigs for their per- for their pet theories or some such thing,oh you mean uh learning type uh yeah i mean actual experiments they would have to get your permission,24,yes,
+4691,82,B,br,R1 tag,strong,br,81,i don't even think we have that in texas,what hockey,83,we might,0.0
+4725,102,B,br,R1 tag,strong,br,101,you must be a t i employee,you must be what,103,you must be a t i employee,1.0
+4859,63,B,br,R1 tag,strong,br,62,but but really the th- on the public t v you know macneil lehrer is one is an hour's program that i always,both,65,if if i watch any news program it will be macneil lehrer and and occasionally c span,0.3
+4928,80,B,br,R1 tag,strong,br,79,club what club are you with,i'm sorry,81,what club were you with,1.0
+4936,6,B,br,R1 tag,strong,br,5,things you already owned or things that you've picked up just to do that,what,7,are they things you already owned or you pick them up just to do that refinishing,0.667
+4936,67,A,br,R1 tag,strong,br,66,they've plastic parts and stuff,the ones that what,68,that you dial in on the side,0.0

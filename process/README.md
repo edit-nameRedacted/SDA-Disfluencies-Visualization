@@ -19,6 +19,16 @@ validation/
     sentence_type_coding_sheet_2.xlsx the coding sheet (codes are typed; the Read me tab counts misspellings)
     coding_sample_2.csv, coding_key_2.csv
   build_coding_sheet.py  builds the .xlsx coding sheet from a coding_sample.csv (needs openpyxl)
+  repair-sample-1/       236 response-opening lines for checking the repair detector, seed 20261013
+    repair_coding_sheet.xlsx          the coding sheet (codes: Repair initiation, Not repair, Cant tell)
+    repair_coding_sample.csv, repair_coding_key.csv
+  build_repair_sheet.py  builds that sheet from repair_coding_sample.csv (needs openpyxl)
+repair/                  results of the timing and repair scripts in pipeline/
+  utterance_timing.csv   start, end, pauses inside, and gap before each utterance (650 calls)
+  call_timing_match.csv  per call: share of words matched to the timed transcript, channel swap
+  repair_initiations.csv the 186 flagged repair initiations, with trouble source and reply
+  speaker_difficulty.csv per speaker per call: long gaps, pauses, mid-word breaks, repair
+                         initiations, restarts, fillers, repeats
 prototypes/              earlier proof-of-concept pages (umbrella bars, barcodes, calls by topic)
                          and the scripts that fed them; superseded by site/index.html
 build-history/
@@ -31,7 +41,12 @@ checks/                  Playwright scripts that walked the page at several wind
                          node_modules; adjust the paths to reuse them
 analysis/                small one-off checks: verb_check2.py (how many parsed sentences of each
                          type contain a verb), plain_index.py and lookup.py (find an utterance's
-                         script type from its words)
+                         script type from its words); age_sex_role.py, partner_um.py,
+                         turn_sequence.py (the comparison with Bortfeld et al. 2001);
+                         fragment_gaps.py (what follows a mid-word break, with timings);
+                         difficulty_signals.py (the topic comparison). The analysis scripts were
+                         run from the working folder and point at its paths
+                         (out/swda_d3, repair/, ms98/); adjust them to rerun.
 assets/
   Asset_1.svg            the receiver drawing (it is also inlined in the page)
   storyboard-sketch.jpg  the hand-drawn storyboard

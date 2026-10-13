@@ -1,0 +1,237 @@
+item,conversation_no,utterance,group,rule,strength,act_tag
+1,3387,96,other,,,b
+2,3049,114,flagged,R1 tag,strong,br
+3,2526,42,other,,,aa
+4,2608,27,flagged,R3 repeat,candidate,qy
+5,2837,63,other,,,sd
+6,2102,28,near miss,,,qy^d
+7,2526,4,near miss,,,qw
+8,2533,42,other,,,sd
+9,2650,318,flagged,R3 repeat,candidate,qy
+10,2792,267,flagged,R3 repeat,candidate,qy
+11,2078,296,near miss,,,qy
+12,2533,213,flagged,R3 repeat,candidate,qy
+13,4171,111,flagged,R1 tag,strong,br
+14,4859,8,other,,,b
+15,3342,80,near miss,,,qy
+16,3523,14,flagged,R3 repeat,candidate,^2
+17,4725,102,flagged,R1 tag,strong,br
+18,3728,159,other,,,sd
+19,2608,71,other,,,b
+20,4316,48,flagged,R4 check,candidate,qy
+21,2521,7,flagged,R2 open,candidate,qw
+22,3495,81,other,,,b
+23,3688,142,flagged,R1 tag,strong,br
+24,2441,215,other,,,aa
+25,2883,52,other,,,b
+26,4184,1,flagged,R1 tag,strong,br
+27,3565,18,near miss,,,qy^d
+28,2105,23,other,,,aa
+29,2229,149,other,,,b
+30,4633,2,flagged,R1 tag,strong,br
+31,3320,59,other,,,bf
+32,4886,69,near miss,,,qy
+33,3768,155,near miss,,,qw
+34,4127,85,flagged,R1 tag,strong,br
+35,3377,73,other,,,%
+36,4092,102,flagged,R1 tag,strong,br
+37,4149,126,flagged,R1 tag,strong,br
+38,2226,49,near miss,,,bh
+39,4325,116,near miss,,,qy
+40,2938,61,flagged,R1 tag,strong,br
+41,2641,327,other,,,na
+42,4649,23,flagged,R4 check,candidate,qy
+43,2226,229,flagged,R1 tag,strong,br
+44,2252,57,flagged,R3 repeat,candidate,^2
+45,3342,57,near miss,,,qy
+46,4152,9,flagged,R1 tag,strong,br
+47,3509,130,other,,,b
+48,2604,121,near miss,,,sd
+49,3445,45,flagged,R1 tag,strong,br
+50,4092,19,near miss,,,qy
+51,2492,162,flagged,R1 tag,strong,br
+52,2547,142,other,,,nn
+53,3090,63,other,,,b
+54,3628,99,other,,,b
+55,3523,8,flagged,R1 tag,strong,br
+56,3526,28,flagged,R1 tag,strong,br
+57,2969,124,near miss,,,qw
+58,4859,63,flagged,R1 tag,strong,br
+59,2938,6,flagged,R4 check,candidate,qy
+60,2465,50,flagged,R1 tag,strong,br
+61,3393,11,flagged,R3 repeat,candidate,qy
+62,2139,170,flagged,R3 repeat,candidate,qy
+63,2062,63,near miss,,,bh
+64,2877,13,flagged,R1 tag,strong,br
+65,4013,30,near miss,,,qw
+66,3503,10,near miss,,,bh
+67,3021,59,flagged,R1 tag,strong,br
+68,2060,86,flagged,R1 tag,strong,br
+69,3427,8,near miss,,,bh
+70,2220,214,near miss,,,qw
+71,2667,317,flagged,R1 tag,strong,br
+72,3447,96,other,,,b
+73,2554,240,other,,,b
+74,4152,43,other,,,b
+75,3068,26,flagged,R3 repeat,candidate,qy
+76,3320,25,flagged,R3 repeat,candidate,qw
+77,3389,27,near miss,,,qy
+78,2187,231,near miss,,,bh
+79,4618,16,other,,,b
+80,4092,49,flagged,R2 open,strong,bh
+81,4618,48,flagged,R1 tag,strong,br
+82,2828,11,other,,,sd
+83,3883,101,other,,,bf
+84,2789,271,flagged,R3 repeat,candidate,b^m
+85,4341,80,other,,,sv
+86,3130,219,other,,,ba
+87,2260,216,flagged,R3 repeat,candidate,qy
+88,2775,241,other,,,sd
+89,2628,19,other,,,sv
+90,3725,3,flagged,R3 repeat,candidate,qy
+91,3526,29,near miss,,,qw
+92,2406,249,near miss,,,ad
+93,2703,313,near miss,,,bh
+94,2691,59,flagged,R3 repeat,candidate,bh
+95,3491,3,flagged,R3 repeat,candidate,qy
+96,2032,247,flagged,R1 tag,strong,br
+97,2608,320,near miss,,,qy
+98,4372,46,flagged,R4 check,candidate,qy
+99,3238,46,flagged,R3 repeat,candidate,qy
+100,3584,130,near miss,,,qy
+101,2397,44,flagged,R2 open,candidate,qw
+102,2559,22,flagged,R3 repeat,candidate,qy
+103,3232,16,other,,,qw
+104,3514,76,flagged,R1 tag,strong,br
+105,2599,132,near miss,,,qy^d
+106,2956,137,flagged,R4 check,candidate,qy
+107,4936,67,flagged,R1 tag,strong,br
+108,2708,11,flagged,R1 tag,strong,br
+109,2653,70,flagged,R3 repeat,candidate,qy
+110,2503,2,other,,,fp
+111,3223,92,flagged,R2 open,strong,x
+112,2499,170,flagged,R1 tag,strong,br
+113,2956,119,flagged,R2 open,strong,bh
+114,2945,17,other,,,b
+115,4642,11,flagged,R1 tag,strong,br
+116,2035,3,flagged,R1 tag,strong,br
+117,2041,211,other,,,aa
+118,3246,6,near miss,,,qy
+119,3219,78,flagged,R4 check,candidate,bf
+120,2061,138,flagged,R1 tag,strong,br
+121,3850,1,near miss,,,qw
+122,2492,19,near miss,,,qy
+123,2641,173,flagged,R3 repeat,candidate,bh
+124,3549,72,flagged,R3 repeat,candidate,bh
+125,2492,69,flagged,R4 check,candidate,qy
+126,2305,209,flagged,R1 tag,strong,br
+127,4339,55,flagged,R1 tag,strong,br
+128,4175,123,flagged,R1 tag,strong,br
+129,2485,45,near miss,,,bh
+130,2650,293,other,,,aa
+131,3041,60,flagged,R3 repeat,candidate,b^m
+132,3345,10,flagged,R1 tag,strong,br
+133,2220,71,flagged,R1 tag,strong,br
+134,4090,57,other,,,b
+135,2472,62,flagged,R1 tag,strong,br
+136,2860,201,other,,,sv
+137,4077,68,other,,,%
+138,2548,87,other,,,sd
+139,2499,148,flagged,R3 repeat,candidate,qy
+140,4801,115,near miss,,,bh
+141,2703,226,flagged,R3 repeat,candidate,^h
+142,2640,84,other,,,aa
+143,2336,121,other,,,sd
+144,2658,39,near miss,,,qy
+145,3286,17,near miss,,,qw
+146,2486,114,other,,,sv
+147,3725,38,flagged,R1 tag,strong,br
+148,3349,62,near miss,,,qw
+149,4177,11,near miss,,,qo
+150,2775,225,other,,,na
+151,3333,136,flagged,R3 repeat,candidate,qy
+152,4329,6,flagged,R1 tag,strong,br
+153,2220,109,flagged,R1 tag,strong,br
+154,2602,86,flagged,R4 check,candidate,qy
+155,2913,295,flagged,R1 tag,strong,br
+156,2485,131,flagged,R2 open,strong,qw
+157,3449,88,other,,,sv
+158,2615,126,other,,,b
+159,3349,6,other,,,sd
+160,3389,2,flagged,R1 tag,strong,br
+161,2479,204,flagged,R3 repeat,candidate,qy^d
+162,3707,123,flagged,R1 tag,strong,br
+163,3445,55,near miss,,,bh
+164,4096,76,near miss,,,qy
+165,4679,25,near miss,,,qy
+166,2645,186,other,,,sd
+167,3311,130,near miss,,,qy
+168,3524,52,flagged,R2 open,strong,qw
+169,2072,168,flagged,R1 tag,strong,br
+170,3526,90,flagged,R1 tag,strong,br
+171,3417,14,flagged,R3 repeat,candidate,aa
+172,3411,102,flagged,R1 tag,strong,br
+173,2969,174,other,,,b
+174,2789,3,flagged,R1 tag,strong,br
+175,3097,179,other,,,%
+176,2062,11,near miss,,,qy
+177,4363,2,near miss,,,qy
+178,2784,96,flagged,R4 check,candidate,qy
+179,2789,5,flagged,R2 open,candidate,qw
+180,2492,89,near miss,,,bh
+181,4379,92,other,,,sd
+182,2969,279,flagged,R1 tag,strong,br
+183,3524,169,flagged,R3 repeat,candidate,qy
+184,2836,124,flagged,R1 tag,strong,br
+185,3497,45,flagged,R1 tag,strong,br
+186,4483,111,near miss,,,qy
+187,3155,69,other,,,ny
+188,3883,17,other,,,oo_co_cc
+189,2703,101,near miss,,,bh
+190,3397,17,flagged,R1 tag,strong,br
+191,2334,299,near miss,,,qo
+192,4342,41,near miss,,,bh
+193,2334,238,flagged,R2 open,candidate,qw
+194,4019,43,other,,,b
+195,3367,99,other,,,sd
+196,2549,231,flagged,R3 repeat,candidate,qy^d
+197,3342,42,near miss,,,qy
+198,2488,2,other,,,b
+199,2510,74,flagged,R3 repeat,candidate,bh
+200,2078,322,near miss,,,qy
+201,3768,41,near miss,,,qy^d
+202,2024,24,near miss,,,qo
+203,3275,147,flagged,R2 open,candidate,qw
+204,2969,116,flagged,R1 tag,strong,br
+205,2775,205,other,,,ng
+206,4137,29,flagged,R3 repeat,candidate,b^m
+207,2969,226,near miss,,,qy
+208,3324,47,other,,,sd
+209,2445,11,other,,,sd
+210,3309,96,near miss,,,qy
+211,2603,173,flagged,R2 open,strong,qw
+212,3514,24,flagged,R1 tag,strong,br
+213,2608,323,flagged,R3 repeat,candidate,bh
+214,2472,78,flagged,R2 open,strong,qw
+215,4080,169,near miss,,,qy
+216,4150,66,flagged,R1 tag,strong,br
+217,3207,30,near miss,,,bh
+218,3397,4,flagged,R1 tag,strong,br
+219,2615,107,flagged,R4 check,candidate,qy
+220,3821,89,flagged,R3 repeat,candidate,b^m
+221,3646,51,other,,,aa
+222,3574,2,near miss,,,bh
+223,2220,69,flagged,R1 tag,strong,br
+224,2304,152,near miss,,,qw
+225,3606,194,near miss,,,qy
+226,2334,172,flagged,R3 repeat,candidate,bh
+227,2851,217,other,,,sd
+228,3551,7,near miss,,,bh
+229,4108,33,flagged,R1 tag,strong,br
+230,4346,75,flagged,R1 tag,strong,br
+231,2092,42,flagged,R1 tag,strong,br
+232,3796,99,near miss,,,bh
+233,3148,3,flagged,R3 repeat,candidate,qy^d
+234,4023,79,other,,,b
+235,3152,115,near miss,,,bh
+236,2041,247,flagged,R1 tag,strong,br

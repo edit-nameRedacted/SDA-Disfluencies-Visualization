@@ -52,6 +52,9 @@ pipeline/              how the data files were made (Python, run once; not part 
   extract_swda.py      reads the corpus and writes every data file, by fixed rules
   publish_site.py      copies the files the page reads into site/
   make_coding_sample.py  draws a blind, stratified sample of utterances for hand coding
+  align_timing.py      gives each utterance start/end times from the MS98 word alignments
+  detect_repair.py     flags other-initiated repair ("huh?") by fixed rules
+  make_repair_sample.py  draws a blind sample for checking those flags
   corpus/              put the corpus download here (not tracked)
   output/              the full extraction output lands here (not tracked)
 process/               how the piece was made: notes, validation, prototypes, checks. See process/README.md
@@ -82,6 +85,30 @@ standard library.
    ```
    python publish_site.py --data output --site ../site
    ```
+
+### Timing and repair (not yet used by the page)
+
+4. Get the Mississippi State word alignments (OpenSLR resource 5, `switchboard_word_alignments.tar.gz`,
+   released without licence restrictions) and unpack them into `pipeline/corpus/`, giving
+   `pipeline/corpus/swb_ms98_transcriptions/`.
+5. Give every utterance a start and end time, and every change of speaker a gap:
+
+   ```
+   python align_timing.py --data output --ms98 corpus/swb_ms98_transcriptions --out output/utterance_timing.csv
+   ```
+
+   The two transcriptions differ slightly, so their words are lined up per speaker. 96% of
+   words match. In 44 calls one source has the speakers' channels the other way round, and the
+   script detects this.
+6. Flag other-initiated repair ("huh?", "Southwest where?") by fixed rules:
+
+   ```
+   python detect_repair.py --data output --out output/repair_initiations.csv --responses output/repair_responses.csv
+   python make_repair_sample.py --responses output/repair_responses.csv --utterances output/utterances.csv --out output
+   ```
+
+   The rules are written out at the top of `detect_repair.py`. They have not yet been checked
+   against hand coding; the sample for that is in `process/validation/repair-sample-1/`.
 
 ## The derived categories
 
