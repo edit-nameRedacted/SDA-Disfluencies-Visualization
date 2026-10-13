@@ -25,7 +25,10 @@ Written per utterance (utterance_timing.csv):
   start, end            seconds from the start of the recording
   matched, words        how many of its words were matched to a timed word
   silence_inside        seconds of MS98 [silence] between its first and last word
-  long_pauses_inside    silences inside of 0.5 s or more
+  long_pauses_inside    silences inside of 0.5 s or more (between two matched words)
+  pauses                where those are: "k:seconds" pairs separated by ";", k being the
+                        index (from 0) in the utterance's word list of the word before
+                        the pause
   gap_before            for an utterance that starts a response (the speaker changed in
                         the transcript): its start minus the end of the other speaker's
                         stretch of speech (a run of words between MS98 silences) that began
@@ -127,7 +130,7 @@ def main():
                 if piece["id"] not in speaker_of:
                     order.append(piece["id"])
                     speaker_of[piece["id"]] = turn["s"]
-                utt_words[piece["id"]].extend(norm_swda(w) for w, _ in piece["w"] if norm_swda(w))
+                utt_words[piece["id"]].extend(norm_swda(w) for w, _ in piece["w"])   # may hold "" for punctuation-only tokens
         # Some calls have the two channels the other way round in one of the sources, so try
         # both pairings and keep the one that matches more words.
         best = None
@@ -143,8 +146,9 @@ def main():
                 seq, owner = [], []
                 for uid in order:
                     if speaker_of[uid] == side:
-                        for w in utt_words[uid]:
-                            seq.append(w); owner.append(uid)
+                        for k, w in enumerate(utt_words[uid]):
+                            if w:
+                                seq.append(w); owner.append((uid, k))
                 sm = difflib.SequenceMatcher(None, seq, [w for w, _, _ in ms_words], autojunk=False)
                 matched = {}
                 for a, b, n in sm.get_matching_blocks():
@@ -152,20 +156,27 @@ def main():
                         matched[a + k] = ms_words[b + k] + (n,)    # keep the length of the matching block
                 n_words += len(seq); n_matched += len(matched)
                 by_utt = collections.defaultdict(list)
-                for i, uid in enumerate(owner):
+                for i, (uid, k) in enumerate(owner):
                     if i in matched:
-                        by_utt[uid].append(matched[i])
+                        by_utt[uid].append(matched[i] + (k,))
                 for uid in order:
                     if speaker_of[uid] != side:
                         continue
                     hits = by_utt.get(uid, [])
-                    rec = {"words": len(utt_words[uid]), "matched": len(hits)}
+                    rec = {"words": sum(1 for w in utt_words[uid] if w), "matched": len(hits)}
                     if hits:
                         s0, e0 = hits[0][1], hits[-1][2]
                         inside = [(a, b) for a, b in silences if a >= s0 and b <= e0]
+                        # Long pauses inside: silence of 0.5 s or more between two matched words,
+                        # placed after the word before it (its index in the utterance's word list).
+                        pauses = []
+                        for h0, h1 in zip(hits, hits[1:]):
+                            gap = sum(b - a for a, b in silences if a >= h0[2] - 1e-6 and b <= h1[1] + 1e-6)
+                            if gap >= 0.5:
+                                pauses.append("%d:%.2f" % (h0[4], gap))
                         rec.update(start=round(s0, 3), end=round(e0, 3), start_sure=int(hits[0][3] >= 2),
                                    silence_inside=round(sum(b - a for a, b in inside), 3),
-                                   long_pauses_inside=sum(1 for a, b in inside if b - a >= 0.5))
+                                   long_pauses_inside=len(pauses), pauses=";".join(pauses))
                     timing[uid] = rec
             if ok and (best is None or n_matched > best[2]):
                 best = (timing, n_words, n_matched, pairing["A"] != "A", runs_of)
@@ -183,7 +194,7 @@ def main():
             timing = {}                                    # too poor a match to trust any time in this call
         prev_speaker = None
         for uid in order:
-            rec = timing.get(uid, {"words": len(utt_words[uid]), "matched": 0})
+            rec = timing.get(uid, {"words": sum(1 for w in utt_words[uid] if w), "matched": 0})
             sp = speaker_of[uid]
             other = "B" if sp == "A" else "A"
             gap = ""
@@ -199,8 +210,9 @@ def main():
                          "words": rec["words"], "matched": rec["matched"],
                          "silence_inside": rec.get("silence_inside", ""),
                          "long_pauses_inside": rec.get("long_pauses_inside", ""),
+                         "pauses": rec.get("pauses", ""),
                          "gap_before": gap})
-            if utt_words[uid]:
+            if any(utt_words[uid]):
                 prev_speaker = sp
 
     with open(args.out, "w", newline="", encoding="utf8") as f:

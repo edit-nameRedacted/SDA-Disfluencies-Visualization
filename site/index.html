@@ -80,6 +80,7 @@
   .detail line { stroke: var(--muted); }
   .detail text { fill: var(--ink); }
   .detail .pct { fill: var(--ink); font-weight: 600; }
+  .detail .etrack { fill: var(--ink); opacity: 0.08; }
   .detail text.header { font-family: var(--header-font); font-weight: 600; }
   /* the cue beside a bar in focus: a thin bracket with a line of text across its middle, saying
      what a second click does. The text has an outline in the page color, which breaks the bracket behind it. */
@@ -161,6 +162,17 @@
   .end-mark line { stroke: var(--muted); stroke-width: 1; }
   .end-mark text { font: 600 8.5px var(--header-font); letter-spacing: 0.1em; text-transform: uppercase; fill: var(--muted); }
   #call-svg.pointing .piece:not(.on) { opacity: 0.28; }
+  .silence-line { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 1.5 3; stroke-linecap: round; }
+  .silence-label { font: 600 8.5px var(--header-font); fill: var(--muted); text-anchor: middle; }
+  .overlap-mark { stroke: var(--ink); stroke-width: 1.2; opacity: 0.55; }
+  .repair-mark circle { fill: var(--paper); stroke: var(--ink); stroke-width: 1.1; }
+  .repair-mark.candidate circle { stroke-dasharray: 2 1.5; }
+  .repair-mark text { font-family: var(--header-font); font-weight: 600; text-anchor: middle; fill: var(--ink); }
+  #say .say-notes { margin-top: 6px; font-size: 12.5px; opacity: 0.75; }
+  .w-pause { opacity: 0.6; font-style: italic; }
+  #hud #mark-key { display: none; margin: 6px 0 0; font: 300 12.5px/1.35 var(--label-font); color: var(--muted); }
+  #hud.on-call #mark-key { display: block; }
+  #mark-key svg { vertical-align: -2px; margin-right: 3px; }
   /* the bubble that shows one utterance. It is dark on the white page, so the words keep the colors they have on the black screen. */
   #say { position: fixed; z-index: 8; box-sizing: border-box; width: max-content; max-width: min(27rem, calc(100vw - 24px)); padding: 9px 12px 10px;
          border-radius: 4px; background: var(--ink); color: var(--paper); pointer-events: none;
@@ -327,6 +339,7 @@
   <h1 class="header">The average call, by topic</h1>
   <p id="hud-line"></p>
   <ul id="legend"></ul>
+  <p id="mark-key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" class="silence-line"/></svg>silence of half a second or more, one second as wide as four words &nbsp;·&nbsp; <svg width="6" height="12"><line x1="3" x2="3" y1="0" y2="12" class="overlap-mark"/></svg>began while the other was still talking &nbsp;·&nbsp; <svg width="12" height="12" class="repair-mark"><circle cx="6" cy="6" r="5"/><text x="6" y="6" dy="0.36em" font-size="8">?</text></svg>asks the other to say it again or explain</p>
   <p id="word-key">Disfluent words in the lines: <span class="w-rp">repeated or reworded</span> · <span class="w-et">editing term</span> · <span class="w-fr">cut-off</span> · <span class="w-yk">you know</span> · <span class="w-uh">uh</span> · <span class="w-um">um</span></p>
 </div>
 <div id="lines"></div>
@@ -356,6 +369,7 @@
       <li><b>Date</b> of the call.</li>
       <li><b>Disfluency marks on words:</b> filled pauses, editing terms, repairs (with the part that gets redone marked off) and cut-off words, from the corpus's disfluency annotation.</li>
       <li><b>A parse of each sentence,</b> from the Penn Treebank release of Switchboard. The sentence types below are read off these parses.</li>
+      <li><b>Timings of every word and silence,</b> from a separate, hand-checked transcription of the same calls by Mississippi State University (released without licence restrictions). The page lines the two transcriptions up word by word; 96% of words match.</li>
       <li><b>A dialog act for each utterance:</b> what it is doing, such as a statement, a question or a backchannel. The corpus has 42 kinds; their names are shortened here.</li>
     </ul>
   </details>
@@ -394,6 +408,29 @@
     <p>Rates are these words per 100 words spoken.</p>
   </details>
   <details>
+    <summary><div><b>Effortful talk</b><span>The two figures under the disfluent words</span></div></summary>
+    <p>Two shares of the average call's words, worked out call by call and then averaged over the umbrella's calls:</p>
+    <table>
+      <tr><th>Uh, um, a repeat or a cut-off</th><td>Words in utterances that hold a filled pause, a repeated or reworded stretch, or a cut-off word: the corpus's own marks. "You know" and editing terms do not count here.</td></tr>
+      <tr><th>A pause of half a second or more</th><td>Words in utterances with a silence of 0.5 s or more between two of their words, from the timings.</td></tr>
+    </table>
+    <p>The two overlap: an utterance can have both. They are kept apart because the first comes from the transcript's marks and the second from the timings, and a silence is not always effort: a speaker may simply be thinking.</p>
+  </details>
+  <details>
+    <summary><div><b>Silences, overlaps and repair</b><span>The marks on the single call</span></div></summary>
+    <p><b>Silences.</b> Where the timings show a silence of half a second or more, between two utterances or inside one, the call gets a dotted stretch on both strands. A second of silence is as wide as about four words, because these callers say 3.8 words a second on average. Shorter silences are not drawn.</p>
+    <p><b>Overlaps.</b> A thin line across both strands marks an utterance that began half a second or more before the other speaker had finished. The transcript puts all talk in one order, so the overlapping words themselves still follow one another.</p>
+    <p><b>Repair initiations.</b> A "?" marks an utterance in which a speaker signals trouble with what the other just said, by one of four rules:</p>
+    <ul>
+      <li>The corpus tags it as signalling non-understanding.</li>
+      <li>It is only "what?", "huh?", "pardon?", "sorry?", "say again?" or similar, written with a question mark.</li>
+      <li>It is a short question made of words from the end of the other's line, with at most one question word added ("Amarillo?", "Southwest where?").</li>
+      <li>It opens with "you mean", "you're saying" or "you said", as a question.</li>
+    </ul>
+    <p>The last two also catch plain checks of understanding, so they are drawn with a dashed circle. Pointing at a marked utterance highlights the line it asks about.</p>
+    <p class="note">The repair rules have not yet been checked against hand coding. A sample for that is drawn.</p>
+  </details>
+  <details>
     <summary><div><b>The 650 calls</b><span>Which calls are in the piece</span></div></summary>
     <p>This release of the corpus holds 1,155 calls. Only 650 of them come with parses, and without a parse a sentence cannot be given a type, so the piece shows those 650.</p>
   </details>
@@ -417,7 +454,7 @@
   <details>
     <summary><div><b>The two strands and the cord</b><span>The single call</span></div></summary>
     <p>Each bar is one utterance, as long as its number of words, placed in the order the transcript gives. The upper strand is the person who placed the call, the lower strand the person who answered. Where the other speaker comes in halfway through an utterance, it shows as two bars of the same color.</p>
-    <p>Where a strand turns to cord, that person is waiting: the cord is as long as the words the other person says in the meantime. It is not silence. This release of the corpus has no timing, so the piece cannot show how long anything took, or where two people spoke at once.</p>
+    <p>Where a strand turns to cord, that person is waiting: the cord is as long as the words the other person says in the meantime. It is not silence. Bars and cords are counted in words, not seconds; only the silences of half a second or more (see “Silences, overlaps and repair”) are given space by their length in time.</p>
     <p>Most transcripts stop without a goodbye: only 172 of the 650 calls have a closing among their last few utterances. Where the bars stop, the corpus's transcript ends. The page has not cut anything off.</p>
     <p class="note">An outlined bar is an utterance with no parse, and so no type.</p>
   </details>
@@ -466,6 +503,19 @@ const keys = types.map(t => t.key);
 // The type drawn in the ink color, the opposite of the background. It is the segment
 // the camera zooms into, and the one the disfluency strip lines up with.
 const inkType = 1;
+
+// Timing on the single-call screen (from the Mississippi State word alignments, folded into the
+// call files by pipeline/add_timing.py). Silences of silenceMin seconds or more get space of their
+// own, wordsPerSecond words wide for each second: 3.8 is how fast these callers talk on average,
+// so a silence is as wide as the words that could have been said in it. An utterance that began
+// overlapMin seconds or more before the other speaker finished gets an overlap mark.
+const silenceMin = 0.5, overlapMin = 0.5, wordsPerSecond = 3.8;
+const repairNames = {
+  "R1 tag": "the corpus tags it as signalling non-understanding",
+  "R2 open": "an open request (\u201cwhat?\u201d, \u201chuh?\u201d)",
+  "R3 repeat": "it repeats part of the line as a question",
+  "R4 check": "it checks what was meant (\u201cyou mean\u2026?\u201d)"
+};
 
 // The kinds of disfluent word, for the thin strip that appears beside a bar in focus.
 // "count" reads how many words of that kind one call has, from columns of conversations.csv.
@@ -571,6 +621,11 @@ function start(rows) {
     call.umbrella = umbrellaOf.get(call.topic) ?? "Other";
     call.total = d3.sum(keys, key => call[key]);                     // words that sit in a typed sentence
     call.kinds = kinds.map(kind => 100 * kind.count(call) / call.words);
+    // Effortful talk (columns added by pipeline/add_timing.py): the share of the call's words that sit in
+    // utterances with a filled pause, a repeated or reworded stretch or a cut-off word; and, apart from
+    // that, the share in utterances with a silence of half a second or more inside.
+    call.effort = call.effort_words == null ? null : 100 * call.effort_words / call.words;
+    call.pausing = call.pause_words == null ? null : 100 * call.pause_words / call.words;
   });
 
   data = d3.rollups(
@@ -582,6 +637,8 @@ function start(rows) {
       const words = d3.sum(group, call => call.words);
       row.kinds = kinds.map(kind => 100 * d3.sum(group, kind.count) / words);
       row.disfluent = d3.sum(row.kinds);
+      row.effort = d3.mean(group, call => call.effort);              // the average call's share, in percent
+      row.pausing = d3.mean(group, call => call.pausing);
       return row;
     },
     call => call.umbrella
@@ -739,7 +796,7 @@ function build() {
 
   const strip = bars.append("g").attr("class", "detail strip");       // 3. the disfluency strip
   strip.append("rect").attr("class", "track");                        // stands for every word in the call
-  const kind = strip.selectAll("g").data(d => d.kinds.map((rate, i) => ({ kind: i, rate }))).join("g");
+  const kind = strip.selectAll("g.kind-row").data(d => d.kinds.map((rate, i) => ({ kind: i, rate }))).join("g").attr("class", "kind-row");
   kind.append("rect").attr("class", k => "kind k" + k.kind);
   kind.append("line");
   const kindText = kind.append("text").attr("dy", "0.35em");
@@ -752,6 +809,23 @@ function build() {
   }
   strip.append("text").attr("class", "header title").text("Disfluent words");
   strip.append("text").attr("class", "sum").text(d => `${rate1(d.disfluent)} in every 100 words`);
+  // Under the kinds: how much of the average call is effortful talk, and how much has long pauses.
+  const effort = strip.append("g").attr("class", "effort");
+  effort.append("text").attr("class", "header etitle").text(W < 700 ? "Effortful talk" : "Effortful talk, average call");
+  const effortRow = effort.selectAll("g.erow").data(d => [
+    { value: d.effort, fill: "var(--ink)", label: "of words in utterances with uh, um, a repeat or a cut-off", short: "Fillers, repeats" },
+    { value: d.pausing, fill: "var(--muted)", label: "of words in utterances with a pause of half a second or more", short: "Long pauses" }
+  ].filter(r => r.value != null)).join("g").attr("class", "erow");
+  effortRow.append("rect").attr("class", "etrack");
+  effortRow.append("rect").attr("class", "efill").attr("fill", r => r.fill);
+  const effortText = effortRow.append("text").attr("dy", "0.35em");
+  if (W < 700) {
+    effortText.append("tspan").text(r => r.short);
+    effortText.append("tspan").attr("class", "pct").attr("dx", "0.5em").text(r => pct(r.value / 100));
+  } else {
+    effortText.append("tspan").attr("class", "pct").text(r => pct(r.value / 100));
+    effortText.append("tspan").attr("dx", "0.5em").text(r => r.label);
+  }
 
   // --- the receiver ---
   const receiver = world.append("g").attr("class", "receiver")
@@ -961,7 +1035,7 @@ function focusOn(d, duration) {
   const centre = -segmentsOf(d)[inkType].mid;                        // height of the ink segment's middle above the baseline
   let foot = centre - barHeight * d.disfluent / 200;                 // so the block starts half its own height below that
   const halfSpan = (kinds.length - 1) / 2;                           // with six kinds: 2.5 label steps above and below the middle
-  strip.selectAll("g").each(function (kind, i) {
+  strip.selectAll("g.kind-row").each(function (kind, i) {
     const height = barHeight * kind.rate / 100, mid = -(foot + height / 2);
     const at = -centre + (halfSpan - i) * px(17);                    // the labels, evenly spaced around the same middle
     d3.select(this).select("rect").attr("x", x0).attr("width", stripWidth).attr("y", -(foot + height)).attr("height", height);
@@ -977,6 +1051,19 @@ function focusOn(d, duration) {
     .attr("text-anchor", narrow ? "end" : "start").attr("font-size", fontSize);
   strip.select(".title").attr("x", labelX).attr("y", labelsTop - px(42))
     .attr("text-anchor", narrow ? "end" : "start").attr("font-size", px(narrow ? 9.5 : 10.5));
+  // Effortful talk: a heading, then a small meter (0 to 100%) and a figure for each share.
+  const labelsBottom = -centre + halfSpan * px(17), meter = px(34);
+  strip.select(".etitle").attr("x", labelX).attr("y", labelsBottom + px(40))
+    .attr("text-anchor", narrow ? "end" : "start").attr("font-size", px(narrow ? 9.5 : 10.5));
+  strip.selectAll(".erow").each(function (r, i) {
+    const y = labelsBottom + px(60) + i * px(19), mx = narrow ? labelX - meter : labelX;
+    d3.select(this).selectAll("rect").style("display", narrow ? "none" : null);   // no room for the meters on a phone
+    const row = d3.select(this);
+    row.select(".etrack").attr("x", mx).attr("y", y - px(2.5)).attr("width", meter).attr("height", px(5));
+    row.select(".efill").attr("x", mx).attr("y", y - px(2.5)).attr("width", meter * r.value / 100).attr("height", px(5));
+    row.select("text").attr("x", narrow ? labelX : mx + meter + px(7)).attr("y", y)
+      .attr("text-anchor", narrow ? "end" : "start").attr("font-size", fontSize);
+  });
 
   // Where the bar sits on screen: a little left of centre, moved over as far as needed
   // for the labels on both sides to stay inside the window.
@@ -1315,7 +1402,7 @@ function writeLines(call) {
 function writeWords(into, words) {
   into.append("span").text("“");
   words.forEach(([word, kind], i) => {
-    const css = kind === "fp" ? (/^um/i.test(word) ? "w-um" : "w-uh") : { rp: "w-rp", et: "w-et", fr: "w-fr", yk: "w-yk" }[kind];
+    const css = kind === "fp" ? (/^um/i.test(word) ? "w-um" : "w-uh") : { rp: "w-rp", et: "w-et", fr: "w-fr", yk: "w-yk", pause: "w-pause" }[kind];
     into.append("span").attr("class", css ?? null).text(word);
     into.append("span").text(i < words.length - 1 ? " " : "”");
   });
@@ -1468,28 +1555,42 @@ function drawCall(grow) {
     return;
   }
 
-  // 1. Every piece of talk, in the order spoken, with where it starts and ends along the call, counted in words.
-  const spans = [];
+  // 1. The call along one line, measured in words: every piece of talk in the order spoken, and,
+  //    where the timings show one, a silence of half a second or more, as wide as the words that
+  //    could have been said in it (see silenceWidth). A long pause inside an utterance splits its bar.
+  const spans = [], silences = [];
+  const firstPiece = new Map(), pieces = [];                         // an utterance's first piece holds its gap and repair flag
   let at = 0;
   for (const turn of conversation.turns) {
     for (const piece of turn.u) {
       if (!piece.w.length) continue;                                 // laughter and other noises carry no words
-      spans.push({ speaker: turn.s, start: at, end: at += piece.w.length, piece, type: keys.indexOf("stw_" + piece.st) });
+      if (!firstPiece.has(piece.id)) firstPiece.set(piece.id, piece);
+      pieces.push(piece);
+      const type = keys.indexOf("stw_" + piece.st);
+      if (piece.g >= silenceMin) silences.push({ start: at, end: at += piece.g * wordsPerSecond, seconds: piece.g });
+      let from = 0;
+      for (const [k, seconds] of piece.pz ?? []) {
+        spans.push({ speaker: turn.s, start: at, end: at += k + 1 - from, piece, type, first: from === 0 });
+        from = k + 1;
+        silences.push({ start: at, end: at += seconds * wordsPerSecond, seconds, inner: true });
+      }
+      spans.push({ speaker: turn.s, start: at, end: at += piece.w.length - from, piece, type, first: from === 0 });
     }
   }
   const total = at;
-  const wholeUtterance = d3.rollup(spans, pieces => pieces.flatMap(s => s.piece.w), s => s.piece.id);
+  const wholeUtterance = d3.rollup(pieces, ps => ps.flatMap(withPauses), piece => piece.id);
+  const askedAbout = new Map();                                      // trouble source -> the utterance that asked about it
+  for (const piece of firstPiece.values()) if (piece.ri) askedAbout.set(piece.ri.t, piece);
 
-  // 2. Each speaker's waits: the stretches where the other one is talking.
+  // 2. Each speaker's waits: the stretches where the other one is talking. Silences are nobody's.
   const waits = [];
   for (const speaker of ["A", "B"]) {
-    let from = 0;
+    let open = null;
     for (const s of spans) {
-      if (s.speaker !== speaker) continue;
-      if (s.start > from) waits.push({ speaker, start: from, end: s.start });
-      from = s.end;
+      if (s.speaker === speaker) continue;
+      if (open && Math.abs(open.end - s.start) < 1e-9) open.end = s.end;
+      else waits.push(open = { speaker, start: s.start, end: s.end });
     }
-    if (from < total) waits.push({ speaker, start: from, end: total });
   }
 
   // 3. Rows. A word is at most 12px wide; that sets how many rows the call needs. If they would not
@@ -1535,6 +1636,41 @@ function drawCall(grow) {
     .style("opacity", grow ? 0 : null)
     .transition().duration(ms(300)).delay(appear).style("opacity", null);
 
+  // Silences: a dotted line along both strands, with its length in seconds when it is a second or more.
+  const silenceParts = silences.flatMap(cut);
+  const silence = callSvg.append("g").attr("class", "silences").selectAll("g").data(silenceParts).join("g")
+    .style("opacity", grow ? 0 : null);
+  for (const speaker of ["A", "B"]) {
+    silence.append("line").attr("class", "silence-line")
+      .attr("x1", part => part.x0 + 1.5).attr("x2", part => part.x1 - 1.5)
+      .attr("y1", part => laneTop(part.row, speaker) + laneHeight / 2).attr("y2", part => laneTop(part.row, speaker) + laneHeight / 2);
+  }
+  silence.filter(part => part.stretch.seconds >= 1 && part.x1 - part.x0 > 26).append("text").attr("class", "silence-label")
+    .attr("x", part => (part.x0 + part.x1) / 2).attr("y", part => laneTop(part.row, "A") - 4)
+    .text(part => `${part.stretch.seconds.toFixed(1)} s`);
+  silence.transition().duration(ms(300)).delay(appear).style("opacity", null);
+
+  // Overlap: a thin line across both strands where an utterance began while the other was still talking.
+  const firstParts = spans.filter(s => s.first).map(s => cut(s)[0]).filter(Boolean);
+  callSvg.append("g").selectAll("line").data(firstParts.filter(part => part.stretch.piece.g <= -overlapMin)).join("line")
+    .attr("class", "overlap-mark")
+    .attr("x1", part => part.x0).attr("x2", part => part.x0)
+    .attr("y1", part => laneTop(part.row, "A") - 2).attr("y2", part => laneTop(part.row, "B") + laneHeight + 2)
+    .style("opacity", grow ? 0 : null)
+    .transition().duration(ms(300)).delay(appear).style("opacity", null);
+
+  // Repair initiations: a small "?" just outside the strand of the speaker who asks.
+  const mark = callSvg.append("g").selectAll("g").data(firstParts.filter(part => part.stretch.piece.ri)).join("g")
+    .attr("class", part => "repair-mark " + part.stretch.piece.ri.s)
+    .attr("transform", part => {
+      const r = Math.max(5, laneHeight * 0.45), A = part.stretch.speaker === "A";
+      return `translate(${part.x0 + r},${A ? laneTop(part.row, "A") - r - 3 : laneTop(part.row, "B") + laneHeight + r + 3})`;
+    })
+    .style("opacity", grow ? 0 : null);
+  mark.append("circle").attr("r", Math.max(5, laneHeight * 0.45));
+  mark.append("text").attr("dy", "0.36em").attr("font-size", Math.max(7, laneHeight * 0.62)).text("?");
+  mark.transition().duration(ms(300)).delay(appear).style("opacity", null);
+
   // Mark where the transcript stops, so that a call that ends mid-sentence does not look cut off by the page.
   const last = cut(spans[spans.length - 1]).pop(), endTop = laneTop(last.row, "A"), endBottom = laneTop(last.row, "B") + laneHeight;
   const endMark = callSvg.append("g").attr("class", "end-mark");
@@ -1545,18 +1681,37 @@ function drawCall(grow) {
 
   // The bubble: who is speaking, the sentence type, the dialog act, then the whole utterance in its own words.
   function say(span, node) {
-    callSvg.classed("pointing", true).selectAll(".piece").classed("on", part => part.stretch.piece.id === span.piece.id);
-    const who = span.speaker === "A" ? "Caller A" : "Answerer B";
+    const head = firstPiece.get(span.piece.id), ri = head.ri, asker = askedAbout.get(span.piece.id);
+    callSvg.classed("pointing", true).selectAll(".piece")
+      .classed("on", part => part.stretch.piece.id === span.piece.id || (ri && part.stretch.piece.id === ri.t) || (asker && part.stretch.piece.id === asker.id));
+    const who = span.speaker === "A" ? "Caller A" : "Answerer B", other = span.speaker === "A" ? "B" : "A";
     const type = span.type < 0 ? "no type" : types[span.type].short;
     sayBox.html("").property("hidden", false);
     sayBox.append("p").attr("class", "who").text(`${who} · ${type} · ${actNames[span.piece.tag] ?? span.piece.tag}`);
     writeWords(sayBox.append("p"), wholeUtterance.get(span.piece.id));
+    const notes = [];
+    if (head.g != null) notes.push(head.g >= 0 ? `Began ${head.g.toFixed(1)} s after ${other} stopped.`
+                                              : `Began ${(-head.g).toFixed(1)} s before ${other} finished, so both were talking.`);
+    if (ri) notes.push(`Asks ${other} to say it again or explain: ${repairNames[ri.r]}${ri.s === "candidate" ? " (a candidate: it may only be checking)" : ""}. The line it asks about is highlighted.`);
+    if (asker) notes.push(`${other} then asked about this line.`);
+    if (notes.length) sayBox.append("p").attr("class", "say-notes").text(notes.join(" "));
     // Under the bar if there is room, otherwise above it; never off the side of the screen.
     const bar = node.getBoundingClientRect(), box = sayBox.node();
     const under = bar.bottom + 8 + box.offsetHeight < H - 8;
     sayBox.style("left", clamp(bar.left, 12, W - box.offsetWidth - 12) + "px")
           .style("top", (under ? bar.bottom + 8 : bar.top - 8 - box.offsetHeight) + "px");
   }
+}
+
+// The words of one piece, with each long pause inside written in as its length ("(0.8 s)").
+function withPauses(piece) {
+  if (!piece.pz) return piece.w;
+  const out = [], after = new Map(piece.pz);
+  piece.w.forEach((pair, i) => {
+    out.push(pair);
+    if (after.has(i)) out.push([`(${after.get(i).toFixed(1)} s)`, "pause"]);
+  });
+  return out;
 }
 
 function hideSay() {

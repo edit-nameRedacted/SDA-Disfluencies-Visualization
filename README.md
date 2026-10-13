@@ -11,13 +11,17 @@ You move through six screens, each one closer in:
    five sentence types by share of words.
 3. **Umbrella focus.** One bar with its shares labelled, and a thin strip showing how many words
    per 100 are disfluent, split into six kinds ("uh", "um", "you know", repeats, editing terms,
-   cut-off words).
+   cut-off words). Under it, how much of the average call is effortful talk: the share of words in
+   utterances with "uh", "um", a repeat or a cut-off, and the share in utterances with a pause of
+   half a second or more.
 4. **Waveform (black).** Every call under that umbrella as its own bar, grouped by topic. Fluent
    complete sentences rise above the line; everything else hangs below it.
 5. **Call focus.** One call, with a typical line of talk for each sentence type in the callers'
    own words.
 6. **Single call.** Every utterance in order: the caller on the upper strand, the answerer on the
-   lower one. A coiled cord stands for the stretches where a speaker is waiting.
+   lower one. A coiled cord stands for the stretches where a speaker is waiting. Silences of half a
+   second or more are dotted stretches as long as the time they took, a thin line marks where both
+   spoke at once, and a "?" marks a request to repeat or explain.
 
 An **i** button in the top right corner opens a panel. It lists what comes from the corpus as
 annotated, what was made for this piece by fixed rule (and the rules), and what was made by
@@ -54,6 +58,7 @@ pipeline/              how the data files were made (Python, run once; not part 
   make_coding_sample.py  draws a blind, stratified sample of utterances for hand coding
   align_timing.py      gives each utterance start/end times from the MS98 word alignments
   detect_repair.py     flags other-initiated repair ("huh?") by fixed rules
+  add_timing.py        folds timings and repair flags into the call files and conversations.csv
   make_repair_sample.py  draws a blind sample for checking those flags
   corpus/              put the corpus download here (not tracked)
   output/              the full extraction output lands here (not tracked)
@@ -86,7 +91,7 @@ standard library.
    python publish_site.py --data output --site ../site
    ```
 
-### Timing and repair (not yet used by the page)
+### Timing and repair
 
 4. Get the Mississippi State word alignments (OpenSLR resource 5, `switchboard_word_alignments.tar.gz`,
    released without licence restrictions) and unpack them into `pipeline/corpus/`, giving
@@ -109,6 +114,16 @@ standard library.
 
    The rules are written out at the top of `detect_repair.py`. They have not yet been checked
    against hand coding; the sample for that is in `process/validation/repair-sample-1/`.
+7. Fold the timings and repair flags into the files the page reads, then copy them into `site/` again:
+
+   ```
+   python add_timing.py --data output --timing output/utterance_timing.csv --repair output/repair_initiations.csv
+   python publish_site.py --data output --site ../site
+   ```
+
+   This adds silences, overlaps and repair flags to each call's JSON file, and five columns to
+   `conversations.csv` (effortful words, words in utterances with a long pause, long gaps, changes
+   of speaker, repair initiations). Without this step the page still works, just without those marks.
 
 ## The derived categories
 
