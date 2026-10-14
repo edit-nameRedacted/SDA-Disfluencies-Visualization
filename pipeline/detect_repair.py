@@ -26,6 +26,15 @@ of these rules fires. Rules are checked in order; the first that fires is record
   R4 check    U opens with "you mean", "do you mean", "you're saying" or
               "you said" and is marked as a question.
 
+Then one check on the reply, for open requests only (U is nothing but "what?", "huh?",
+"pardon?" and the like, whether it fired R1 or R2): it counts only if Y's next
+utterance answers it, by repeating at least one content word of the trouble source
+(saying it again), by opening with "I said", "I mean", "it's" or "that's" (explaining),
+or by being a short reply of 1 to 6 words that is not just "yeah", "uh-huh", "right"
+(saying what was meant: "Dead Zone"). A "huh" followed by Y simply
+carrying on with something new is a reaction ("huh!"), not a request. This check was
+added after a first round of hand coding.
+
 R1 and R2 are "strong"; R3, R4 and R2's "what's that?" are "candidate" (they
 also catch checks of understanding and requests for more that are not trouble). Nothing here is labelled by a person or a
 model: each flag can be traced to the rule and the words that fired it.
@@ -121,6 +130,28 @@ def classify(u, trouble):
     return None, ""
 
 
+RESPONSE_ONLY = {"yeah", "yes", "uh-huh", "huh-uh", "right", "okay", "no", "sure", "um-hum", "yep", "oh", "uh", "um", "well", "mm"}
+
+
+def is_open(u):
+    """U is nothing but an open-class initiator, fillers aside."""
+    words = u["words"]
+    stripped = tuple(w for w in words if w not in ("uh", "um", "oh", "well"))
+    return core(words) in OPEN_INITIATORS or stripped in OPEN_INITIATORS
+
+
+def reply_answers(trouble, reply):
+    """The reply says the trouble source again (a shared content word) or is a short answer."""
+    if reply is None:
+        return False
+    if content(reply["words"]) & content(trouble["words"]):
+        return True
+    words = [w for w in reply["words"] if w not in ("uh", "um", "oh", "well")]
+    if " ".join(words[:2]) in ("i said", "i mean", "it's", "it is", "that's", "that is") or words[:1] in (["it's"], ["that's"]):
+        return True                                        # an explanation: "it's an Italian needlework"
+    return 1 <= len(words) <= 6 and not all(w in RESPONSE_ONLY for w in words)
+
+
 def strength(rule, fired_on):
     """R1 and R2 are strong, except "what's that" / "what was that", which also ask for
     more information about something new ("I've got a good recipe." "Oh what's that?")."""
@@ -158,6 +189,8 @@ def main():
                 continue
             rule, fired_on = classify(u, trouble)
             repair = next((us[k] for k in range(i + 1, len(us)) if us[k]["speaker"] == trouble["speaker"] and us[k]["words"]), None)
+            if rule and is_open(u) and not reply_answers(trouble, repair):
+                rule, fired_on = None, ""                          # an open "huh" the other just talked past
             row = {"conversation_no": call, "utterance": u["id"], "speaker": u["speaker"], "act_tag": u["tag"],
                    "rule": rule or "", "strength": strength(rule, fired_on),
                    "fired_on": fired_on, "trouble_utterance": trouble["id"], "trouble": " ".join(trouble["words"]),
