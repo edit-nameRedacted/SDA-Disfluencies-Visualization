@@ -408,7 +408,7 @@
     <p>Rates are these words per 100 words spoken.</p>
   </details>
   <details>
-    <summary><div><b>Effortful talk</b><span>The two figures under the disfluent words</span></div></summary>
+    <summary><div><b>How difficult was it to keep the conversation going?</b><span>The two figures under the disfluent words</span></div></summary>
     <p>Two shares of the average call's words, worked out call by call and then averaged over the umbrella's calls:</p>
     <table>
       <tr><th>Uh, um, a repeat or a cut-off</th><td>Words in utterances that hold a filled pause, a repeated or reworded stretch, or a cut-off word: the corpus's own marks. "You know" and editing terms do not count here.</td></tr>
@@ -812,21 +812,30 @@ function build() {
   strip.append("text").attr("class", "sum").text(d => `${rate1(d.disfluent)} in every 100 words`);
   // Under the kinds: how much of the average call is effortful talk, and how much has long pauses.
   const effort = strip.append("g").attr("class", "effort");
-  effort.append("text").attr("class", "header etitle").text(W < 700 ? "Effortful talk" : "Effortful talk, average call");
+  // Text lines are split by hand (SVG text does not wrap); a phone gets shorter lines.
+  const effortLines = W < 700
+    ? { title: ["How difficult was it", "to keep the", "conversation going?"], intro: ["Of all words uttered during", "the calls, on average:"],
+        rows: [["involved an uh, um,", "a repeat or a cut-off"], ["contained a pause of", "half a second or more"]] }
+    : { title: ["How difficult was it to keep", "the conversation going?"], intro: ["Of all words uttered during the calls, on average:"],
+        rows: [["involved an uh, um, a repeat or a cut-off"], ["contained a pause of half a second or more"]] };
+  const lines = (sel, list) => list.forEach((line, i) => sel.append("tspan").attr("class", "eline").attr("dy", i ? "1.25em" : 0).text(line));
+  lines(effort.append("text").attr("class", "header etitle"), effortLines.title);
+  lines(effort.append("text").attr("class", "eintro"), effortLines.intro);
   const effortRow = effort.selectAll("g.erow").data(d => [
-    { value: d.effort, fill: "var(--ink)", label: "of words in utterances with uh, um, a repeat or a cut-off", short: "Fillers, repeats" },
-    { value: d.pausing, fill: "var(--muted)", label: "of words in utterances with a pause of half a second or more", short: "Long pauses" }
+    { value: d.effort, fill: "var(--ink)", lines: effortLines.rows[0] },
+    { value: d.pausing, fill: "var(--muted)", lines: effortLines.rows[1] }
   ].filter(r => r.value != null)).join("g").attr("class", "erow");
   effortRow.append("rect").attr("class", "etrack");
   effortRow.append("rect").attr("class", "efill").attr("fill", r => r.fill);
   const effortText = effortRow.append("text").attr("dy", "0.35em");
-  if (W < 700) {
-    effortText.append("tspan").text(r => r.short);
-    effortText.append("tspan").attr("class", "pct").attr("dx", "0.5em").text(r => pct(r.value / 100));
-  } else {
-    effortText.append("tspan").attr("class", "pct").text(r => pct(r.value / 100));
-    effortText.append("tspan").attr("dx", "0.5em").text(r => r.label);
-  }
+  effortText.each(function (r) {
+    const t = d3.select(this);
+    r.lines.forEach((line, i) => {
+      const span = t.append("tspan").attr("class", "eline").attr("dy", i ? "1.25em" : 0);
+      if (i === 0) { span.append("tspan").attr("class", "pct").text(pct(r.value / 100)); span.append("tspan").text(" " + line); }
+      else span.text(line);
+    });
+  });
 
   // --- the receiver ---
   const receiver = world.append("g").attr("class", "receiver")
@@ -1054,16 +1063,25 @@ function focusOn(d, duration) {
     .attr("text-anchor", narrow ? "end" : "start").attr("font-size", px(narrow ? 9.5 : 10.5));
   // Effortful talk: a heading, then a small meter (0 to 100%) and a figure for each share.
   const labelsBottom = -centre + halfSpan * px(17), meter = px(34);
-  strip.select(".etitle").attr("x", labelX).attr("y", labelsBottom + px(40))
-    .attr("text-anchor", narrow ? "end" : "start").attr("font-size", px(narrow ? 9.5 : 10.5));
+  const lineStep = px(narrow ? 13 : 14.5);
+  let ey = labelsBottom + px(40);
+  const anchor = narrow ? "end" : "start";
+  strip.select(".etitle").attr("y", ey).attr("text-anchor", anchor).attr("font-size", px(narrow ? 9.5 : 10.5))
+    .selectAll(".eline").attr("x", labelX);
+  ey += (strip.select(".etitle").selectAll(".eline").size() - 1) * lineStep + px(19);
+  strip.select(".eintro").attr("y", ey).attr("text-anchor", anchor).attr("font-size", fontSize).selectAll(".eline").attr("x", labelX);
+  ey += (strip.select(".eintro").selectAll(".eline").size() - 1) * lineStep + px(21);
+  const rowStarts = [];
+  strip.selectAll(".erow").each(function (r) { rowStarts.push(ey); ey += r.lines.length * lineStep + px(6); });
   strip.selectAll(".erow").each(function (r, i) {
-    const y = labelsBottom + px(60) + i * px(19), mx = narrow ? labelX - meter : labelX;
+    const y = rowStarts[i], mx = narrow ? labelX - meter : labelX;
     d3.select(this).selectAll("rect").style("display", narrow ? "none" : null);   // no room for the meters on a phone
     const row = d3.select(this);
     row.select(".etrack").attr("x", mx).attr("y", y - px(2.5)).attr("width", meter).attr("height", px(5));
     row.select(".efill").attr("x", mx).attr("y", y - px(2.5)).attr("width", meter * r.value / 100).attr("height", px(5));
-    row.select("text").attr("x", narrow ? labelX : mx + meter + px(7)).attr("y", y)
-      .attr("text-anchor", narrow ? "end" : "start").attr("font-size", fontSize);
+    const tx = narrow ? labelX : mx + meter + px(7);
+    row.select("text").attr("x", tx).attr("y", y).attr("text-anchor", anchor).attr("font-size", fontSize)
+      .selectAll(":scope > .eline").attr("x", tx);
   });
 
   // Where the bar sits on screen: a little left of centre, moved over as far as needed
