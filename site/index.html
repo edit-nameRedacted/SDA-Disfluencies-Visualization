@@ -409,7 +409,7 @@
   </details>
   <details>
     <summary><div><b>How difficult was it to keep the conversation going?</b><span>The two figures under the disfluent words</span></div></summary>
-    <p>Two shares of the average call's words, worked out call by call and then averaged over the umbrella's calls:</p>
+    <p>Two shares of the average call's words, worked out call by call and then averaged over the umbrella's calls, so that every call counts equally. A "stretch of talk" is one utterance, the unit the corpus divides talk into.</p>
     <table>
       <tr><th>Uh, um, a repeat or a cut-off</th><td>Words in utterances that hold a filled pause, a repeated or reworded stretch, or a cut-off word: the corpus's own marks. "You know" and editing terms do not count here.</td></tr>
       <tr><th>A pause of half a second or more</th><td>Words in utterances with a silence of 0.5 s or more between two of their words, from the timings.</td></tr>
@@ -814,10 +814,12 @@ function build() {
   const effort = strip.append("g").attr("class", "effort");
   // Text lines are split by hand (SVG text does not wrap); a phone gets shorter lines.
   const effortLines = W < 700
-    ? { title: ["How difficult was it", "to keep the", "conversation going?"], intro: ["Of all words uttered during", "the calls, on average:"],
-        rows: [["involved an uh, um,", "a repeat or a cut-off"], ["contained a pause of", "half a second or more"]] }
-    : { title: ["How difficult was it to keep", "the conversation going?"], intro: ["Of all words uttered during the calls, on average:"],
-        rows: [["involved an uh, um, a repeat or a cut-off"], ["contained a pause of half a second or more"]] };
+    ? { title: ["How difficult was it", "to keep the", "conversation going?"], intro: ["In the average call:"],
+        rows: [["of words were in", "talk with an uh, um,", "a repeat or a cut-off"],
+               ["of words were in", "talk with a pause of", "half a second or more"]] }
+    : { title: ["How difficult was it to keep", "the conversation going?"], intro: ["In the average call:"],
+        rows: [["of words were spoken in a stretch of talk", "with an uh, um, a repeat or a cut-off"],
+               ["of words were spoken in a stretch of talk", "with a pause of half a second or more"]] };
   const lines = (sel, list) => list.forEach((line, i) => sel.append("tspan").attr("class", "eline").attr("dy", i ? "1.25em" : 0).text(line));
   lines(effort.append("text").attr("class", "header etitle"), effortLines.title);
   lines(effort.append("text").attr("class", "eintro"), effortLines.intro);
